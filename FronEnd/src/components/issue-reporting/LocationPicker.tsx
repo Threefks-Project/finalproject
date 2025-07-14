@@ -6,6 +6,7 @@ import { X, MapPin, Search, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import 'leaflet/dist/leaflet.css';
 
+
 // Fix for default markers in react-leaflet
 const defaultIcon = new Icon({
   iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
