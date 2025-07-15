@@ -1,7 +1,8 @@
+import React, { useEffect, useState } from "react";
+import { Brain, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
-import React, { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Brain, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
+declare const ort: any; // because ort is loaded globally via CDN
 
 interface AIClassificationProps {
   image: File;
@@ -11,38 +12,87 @@ interface AIClassificationProps {
 const AIClassification: React.FC<AIClassificationProps> = ({ image, onClassification }) => {
   const { t } = useTranslation();
   const [isClassifying, setIsClassifying] = useState(false);
-  const [classification, setClassification] = useState<string>('');
-  const [confidence, setConfidence] = useState<number>(0);
+  const [classification, setClassification] = useState("Unknown");
+  const [confidence, setConfidence] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const labels = ["garbage", "pothole"];
 
   useEffect(() => {
-    classifyImage();
+    if (image) {
+      classifyImage(image);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [image]);
 
-  const classifyImage = async () => {
+  async function classifyImage(imageFile: File) {
     setIsClassifying(true);
-    
-    // Simulate AI classification (in real implementation, use MobileNetV2 or similar)
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock classifications based on common municipal issues
-    const possibleClassifications = [
-      { name: 'सडकमा खाडल', confidence: 0.92 },
-      { name: 'फोहोर जमेको', confidence: 0.87 },
-      { name: 'बत्ती बिग्रिएको', confidence: 0.84 },
-      { name: 'नाली बन्द भएको', confidence: 0.78 },
-      { name: 'ट्राफिक साइन बिग्रिएको', confidence: 0.75 },
-      { name: 'पानीको पाइप फुटेको', confidence: 0.82 },
-      { name: 'फुटपाथ बिग्रिएको', confidence: 0.89 }
-    ];
-    
-    const randomClassification = possibleClassifications[
-      Math.floor(Math.random() * possibleClassifications.length)
-    ];
-    
-    setClassification(randomClassification.name);
-    setConfidence(randomClassification.confidence);
-    setIsClassifying(false);
-    onClassification(randomClassification.name);
+    setError(null);
+    try {
+      const session = await ort.InferenceSession.create("/mobilenetv2.onnx");
+
+      const canvas = await loadImageToCanvas(imageFile);
+      const inputTensor = preprocessImage(canvas);
+
+      const feeds = {
+        [session.inputNames[0]]: new ort.Tensor("float32", inputTensor, [1, 3, 224, 224]),
+      };
+
+      const outputMap = await session.run(feeds);
+      const output = outputMap[session.outputNames[0]].data as Float32Array;
+
+      const maxVal = Math.max(...output);
+      const predIndex = output.findIndex((v) => v === maxVal);
+
+      if (predIndex < 0 || predIndex >= labels.length) {
+        throw new Error("Prediction index out of range");
+      }
+
+      setClassification(labels[predIndex]);
+      setConfidence(maxVal);
+      onClassification(labels[predIndex]);
+    } catch (e) {
+      console.error(e);
+      setError("Model inference failed. Check your model path and network.");
+      setClassification("Unknown");
+      setConfidence(0);
+      onClassification("Unknown");
+    } finally {
+      setIsClassifying(false);
+    }
+  }
+
+  function loadImageToCanvas(file: File): Promise<HTMLCanvasElement> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 224;
+        canvas.height = 224;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, 224, 224);
+        resolve(canvas);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  function preprocessImage(canvas: HTMLCanvasElement): Float32Array {
+    const ctx = canvas.getContext("2d")!;
+    const imageData = ctx.getImageData(0, 0, 224, 224);
+    const { data } = imageData;
+
+    const floatData = new Float32Array(3 * 224 * 224);
+    for (let i = 0; i < 224 * 224; i++) {
+      const r = data[i * 4] / 255;
+      const g = data[i * 4 + 1] / 255;
+      const b = data[i * 4 + 2] / 255;
+
+      floatData[i] = (r - 0.485) / 0.229;
+      floatData[i + 224 * 224] = (g - 0.456) / 0.224;
+      floatData[i + 2 * 224 * 224] = (b - 0.406) / 0.225;
+    }
+    return floatData;
   };
 
   const getConfidenceColor = (conf: number) => {
@@ -61,7 +111,7 @@ const AIClassification: React.FC<AIClassificationProps> = ({ image, onClassifica
       <label className="block text-lg font-semibold text-municipal-blue">
         {t('ai_classification')}
       </label>
-      
+
       <div className="municipal-card p-6">
         {isClassifying ? (
           <div className="text-center">
@@ -69,36 +119,38 @@ const AIClassification: React.FC<AIClassificationProps> = ({ image, onClassifica
               <Brain className="h-8 w-8 text-municipal-blue animate-pulse" />
               <Loader2 className="h-6 w-6 animate-spin text-municipal-blue" />
             </div>
-            <h3 className="font-semibold text-municipal-blue mb-2">
-              {t('ai_analyzing')}
-            </h3>
-            <p className="text-gray-600 text-sm">
-              {t('please_wait')}
-            </p>
+            <h3 className="font-semibold text-municipal-blue mb-2">{t('ai_analyzing')}</h3>
+            <p className="text-gray-600 text-sm">{t('please_wait')}</p>
           </div>
-        ) : classification ? (
+        ) : error ? (
+          <div className="text-center">
+            <div className="flex items-center justify-center space-x-3 mb-4">
+              <AlertTriangle className="h-8 w-8 text-red-600 animate-pulse" />
+            </div>
+            <h3 className="font-semibold text-red-600 mb-2">{t('error')}</h3>
+            <p className="text-gray-600 text-sm">{error}</p>
+          </div>
+        ) : (
           <div className="text-center">
             <div className="flex items-center justify-center space-x-3 mb-4">
               <Brain className="h-8 w-8 text-municipal-blue" />
               {getConfidenceIcon(confidence)}
             </div>
-            <h3 className="font-semibold text-municipal-blue mb-2">
-              {t('identified_issue')}
-            </h3>
-            <div className="bg-blue-50 rounded-lg p-4 mb-4">
-              <p className="text-xl font-semibold text-municipal-blue mb-2">
-                {classification}
-              </p>
-              <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${getConfidenceColor(confidence)}`}>
+            <h3 className="font-semibold text-municipal-blue mb-2">{t('identified_issue')}</h3>
+            <div className={`bg-blue-50 rounded-lg p-4 mb-4`}>
+              <p className="text-xl font-semibold text-municipal-blue mb-2">{classification}</p>
+              <div
+                className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${getConfidenceColor(
+                  confidence
+                )}`}
+              >
                 {getConfidenceIcon(confidence)}
                 <span>{t('confidence')}: {(confidence * 100).toFixed(0)}%</span>
               </div>
             </div>
-            <p className="text-gray-600 text-sm">
-              {t('if_wrong_description')}
-            </p>
+            <p className="text-gray-600 text-sm">{t('if_wrong_description')}</p>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );
