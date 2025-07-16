@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Camera, 
@@ -7,8 +7,6 @@ import {
   AlertCircle, 
   CheckCircle,
   Loader2,
-  ImageIcon,
-  Trash2,
   X,
   Map as MapIcon
 } from 'lucide-react';
@@ -16,6 +14,8 @@ import { toast } from '@/hooks/use-toast';
 import CameraCapture from '@/components/issue-reporting/CameraCapture';
 import LocationPicker from '@/components/issue-reporting/LocationPicker';
 import AIClassification from '@/components/issue-reporting/AIClassification';
+
+import exifr from 'exifr';  // <--- Import exifr
 
 const ReportIssue: React.FC = () => {
   const { t } = useTranslation();
@@ -37,25 +37,20 @@ const ReportIssue: React.FC = () => {
     { key: 'high', label: t('high_priority'), color: 'text-red-600' }
   ];
 
-  // Extract EXIF GPS data from image
+  // Extract EXIF GPS data from image using exifr
   const extractGPSFromImage = async (file: File): Promise<{lat: number, lng: number} | null> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        // Mock GPS extraction - in real implementation, use EXIF.js library
-        // For demo, we'll simulate some images having GPS data
-        const hasGPS = Math.random() > 0.5;
-        if (hasGPS) {
-          resolve({
-            lat: 26.4525 + (Math.random() - 0.5) * 0.01,
-            lng: 87.2718 + (Math.random() - 0.5) * 0.01
-          });
-        } else {
-          resolve(null);
-        }
-      };
-      img.src = URL.createObjectURL(file);
-    });
+    try {
+      const exifData = await exifr.gps(file);
+      if (exifData && exifData.latitude && exifData.longitude) {
+        return {
+          lat: exifData.latitude,
+          lng: exifData.longitude,
+        };
+      }
+    } catch (error) {
+      console.error('EXIF GPS extraction error:', error);
+    }
+    return null;
   };
 
   // Get browser geolocation
@@ -92,7 +87,7 @@ const ReportIssue: React.FC = () => {
       setNeedsManualLocation(false);
       toast({
         title: t('success'),
-        description: 'Location obtained from image',
+        description: 'Location obtained from image EXIF data',
       });
     } else {
       // Try browser geolocation
@@ -466,6 +461,7 @@ const ReportIssue: React.FC = () => {
           onLocationSelect={handleLocationSelected}
           onClose={() => setShowLocationPicker(false)}
           currentLocation={location}
+          imageFile={capturedImage}
         />
       )}
     </div>

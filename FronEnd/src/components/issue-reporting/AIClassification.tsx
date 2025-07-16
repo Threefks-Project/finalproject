@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Brain, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-declare const ort: any; // because ort is loaded globally via CDN
+declare const ort: any;
 
 interface AIClassificationProps {
   image: File;
@@ -17,12 +17,12 @@ const AIClassification: React.FC<AIClassificationProps> = ({ image, onClassifica
   const [error, setError] = useState<string | null>(null);
 
   const labels = ["garbage", "pothole"];
+  const CONFIDENCE_THRESHOLD = 0.8;
 
   useEffect(() => {
     if (image) {
       classifyImage(image);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [image]);
 
   async function classifyImage(imageFile: File) {
@@ -39,18 +39,26 @@ const AIClassification: React.FC<AIClassificationProps> = ({ image, onClassifica
       };
 
       const outputMap = await session.run(feeds);
-      const output = outputMap[session.outputNames[0]].data as Float32Array;
+      const rawOutput = outputMap[session.outputNames[0]].data as Float32Array;
+      const probabilities = softmax(rawOutput);
 
-      const maxVal = Math.max(...output);
-      const predIndex = output.findIndex((v) => v === maxVal);
+      const maxProb = Math.max(...probabilities);
+      const predIndex = probabilities.findIndex((v) => v === maxProb);
 
-      if (predIndex < 0 || predIndex >= labels.length) {
-        throw new Error("Prediction index out of range");
+      const secondMaxProb = Math.max(...probabilities.filter((v, i) => i !== predIndex));
+
+      const isConfidentEnough = maxProb >= CONFIDENCE_THRESHOLD;
+      const isPredictionDistinct = (maxProb - secondMaxProb) >= 0.2; // not too close
+
+      if (!isConfidentEnough || !isPredictionDistinct) {
+        setClassification("Incorrect");
+        setConfidence(maxProb);
+        onClassification("Incorrect");
+      } else {
+        setClassification(labels[predIndex]);
+        setConfidence(maxProb);
+        onClassification(labels[predIndex]);
       }
-
-      setClassification(labels[predIndex]);
-      setConfidence(maxVal);
-      onClassification(labels[predIndex]);
     } catch (e) {
       console.error(e);
       setError("Model inference failed. Check your model path and network.");
@@ -60,6 +68,12 @@ const AIClassification: React.FC<AIClassificationProps> = ({ image, onClassifica
     } finally {
       setIsClassifying(false);
     }
+  }
+
+  function softmax(arr: Float32Array | number[]): number[] {
+    const exps = [...arr].map((x) => Math.exp(x));
+    const sum = exps.reduce((a, b) => a + b, 0);
+    return exps.map((x) => x / sum);
   }
 
   function loadImageToCanvas(file: File): Promise<HTMLCanvasElement> {
@@ -93,12 +107,12 @@ const AIClassification: React.FC<AIClassificationProps> = ({ image, onClassifica
       floatData[i + 2 * 224 * 224] = (b - 0.406) / 0.225;
     }
     return floatData;
-  };
+  }
 
   const getConfidenceColor = (conf: number) => {
-    if (conf >= 0.8) return 'text-green-600 bg-green-100';
-    if (conf >= 0.6) return 'text-yellow-600 bg-yellow-100';
-    return 'text-red-600 bg-red-100';
+    if (conf >= 0.8) return "text-green-600 bg-green-100";
+    if (conf >= 0.6) return "text-yellow-600 bg-yellow-100";
+    return "text-red-600 bg-red-100";
   };
 
   const getConfidenceIcon = (conf: number) => {
@@ -109,7 +123,7 @@ const AIClassification: React.FC<AIClassificationProps> = ({ image, onClassifica
   return (
     <div className="space-y-4 animate-slide-in-right">
       <label className="block text-lg font-semibold text-municipal-blue">
-        {t('ai_classification')}
+        {t("ai_classification")}
       </label>
 
       <div className="municipal-card p-6">
@@ -119,15 +133,15 @@ const AIClassification: React.FC<AIClassificationProps> = ({ image, onClassifica
               <Brain className="h-8 w-8 text-municipal-blue animate-pulse" />
               <Loader2 className="h-6 w-6 animate-spin text-municipal-blue" />
             </div>
-            <h3 className="font-semibold text-municipal-blue mb-2">{t('ai_analyzing')}</h3>
-            <p className="text-gray-600 text-sm">{t('please_wait')}</p>
+            <h3 className="font-semibold text-municipal-blue mb-2">{t("ai_analyzing")}</h3>
+            <p className="text-gray-600 text-sm">{t("please_wait")}</p>
           </div>
         ) : error ? (
           <div className="text-center">
             <div className="flex items-center justify-center space-x-3 mb-4">
               <AlertTriangle className="h-8 w-8 text-red-600 animate-pulse" />
             </div>
-            <h3 className="font-semibold text-red-600 mb-2">{t('error')}</h3>
+            <h3 className="font-semibold text-red-600 mb-2">{t("error")}</h3>
             <p className="text-gray-600 text-sm">{error}</p>
           </div>
         ) : (
@@ -136,7 +150,7 @@ const AIClassification: React.FC<AIClassificationProps> = ({ image, onClassifica
               <Brain className="h-8 w-8 text-municipal-blue" />
               {getConfidenceIcon(confidence)}
             </div>
-            <h3 className="font-semibold text-municipal-blue mb-2">{t('identified_issue')}</h3>
+            <h3 className="font-semibold text-municipal-blue mb-2">{t("identified_issue")}</h3>
             <div className={`bg-blue-50 rounded-lg p-4 mb-4`}>
               <p className="text-xl font-semibold text-municipal-blue mb-2">{classification}</p>
               <div
@@ -145,10 +159,10 @@ const AIClassification: React.FC<AIClassificationProps> = ({ image, onClassifica
                 )}`}
               >
                 {getConfidenceIcon(confidence)}
-                <span>{t('confidence')}: {(confidence * 100).toFixed(0)}%</span>
+                <span>{t("confidence")}: {(confidence * 100).toFixed(2)}%</span>
               </div>
             </div>
-            <p className="text-gray-600 text-sm">{t('if_wrong_description')}</p>
+            <p className="text-gray-600 text-sm">{t("if_wrong_description")}</p>
           </div>
         )}
       </div>
