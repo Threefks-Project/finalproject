@@ -1,57 +1,63 @@
-import React, { useState, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { 
-  Camera, 
-  MapPin, 
-  Upload, 
-  AlertCircle, 
+import React, { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Camera,
+  MapPin,
+  Upload,
+  AlertCircle,
   CheckCircle,
   Loader2,
   X,
-  Map as MapIcon
-} from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
-import CameraCapture from '@/components/issue-reporting/CameraCapture';
-import LocationPicker from '@/components/issue-reporting/LocationPicker';
-import AIClassification from '@/components/issue-reporting/AIClassification';
+  Map as MapIcon,
+} from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import CameraCapture from "@/components/issue-reporting/CameraCapture";
+import LocationPicker from "@/components/issue-reporting/LocationPicker";
+import AIClassification from "@/components/issue-reporting/AIClassification";
 
-import exifr from 'exifr';  // <--- Import exifr
+import exifr from "exifr"; // <--- Import exifr
 
 const ReportIssue: React.FC = () => {
   const { t } = useTranslation();
   const [capturedImage, setCapturedImage] = useState<File | null>(null);
   const [showCamera, setShowCamera] = useState(false);
-  const [location, setLocation] = useState<{lat: number, lng: number, address?: string} | null>(null);
-  const [description, setDescription] = useState('');
-  const [urgency, setUrgency] = useState('medium');
-  const [contact, setContact] = useState('');
+  const [location, setLocation] = useState<{
+    lat: number;
+    lng: number;
+    address?: string;
+  } | null>(null);
+  const [description, setDescription] = useState("");
+  const [urgency, setUrgency] = useState("medium");
+  const [contact, setContact] = useState("");
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [needsManualLocation, setNeedsManualLocation] = useState(false);
-  const [classification, setClassification] = useState<string>('');
-  const [manualIssueType, setManualIssueType] = useState<string>('');
+  const [classification, setClassification] = useState<string>("");
+  const [manualIssueType, setManualIssueType] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const urgencyOptions = [
-    { key: 'low', label: t('low_priority'), color: 'text-green-600' },
-    { key: 'medium', label: t('medium_priority'), color: 'text-yellow-600' },
-    { key: 'high', label: t('high_priority'), color: 'text-red-600' }
+    { key: "low", label: t("low_priority"), color: "text-green-600" },
+    { key: "medium", label: t("medium_priority"), color: "text-yellow-600" },
+    { key: "high", label: t("high_priority"), color: "text-red-600" },
   ];
 
   const issueTypes = [
-    { key: 'pothole', label: 'Road/Pothole Issues' },
-    { key: 'streetlight', label: 'Street Lighting' },
-    { key: 'garbage', label: 'Garbage Collection' },
-    { key: 'water', label: 'Water Supply Issues' },
-    { key: 'drainage', label: 'Drainage Problems' },
-    { key: 'traffic', label: 'Traffic Issues' },
-    { key: 'noise', label: 'Noise Pollution' },
-    { key: 'construction', label: 'Illegal Construction' },
-    { key: 'other', label: 'Other' }
+    { key: "pothole", label: "Road/Pothole Issues" },
+    { key: "streetlight", label: "Street Lighting" },
+    { key: "garbage", label: "Garbage Collection" },
+    { key: "water", label: "Water Supply Issues" },
+    { key: "drainage", label: "Drainage Problems" },
+    { key: "traffic", label: "Traffic Issues" },
+    { key: "noise", label: "Noise Pollution" },
+    { key: "construction", label: "Illegal Construction" },
+    { key: "other", label: "Other" },
   ];
 
   // Extract EXIF GPS data from image using exifr
-  const extractGPSFromImage = async (file: File): Promise<{lat: number, lng: number} | null> => {
+  const extractGPSFromImage = async (
+    file: File
+  ): Promise<{ lat: number; lng: number } | null> => {
     try {
       const exifData = await exifr.gps(file);
       if (exifData && exifData.latitude && exifData.longitude) {
@@ -61,13 +67,16 @@ const ReportIssue: React.FC = () => {
         };
       }
     } catch (error) {
-      console.error('EXIF GPS extraction error:', error);
+      console.error("EXIF GPS extraction error:", error);
     }
     return null;
   };
 
   // Get browser geolocation
-  const getBrowserLocation = (): Promise<{lat: number, lng: number} | null> => {
+  const getBrowserLocation = (): Promise<{
+    lat: number;
+    lng: number;
+  } | null> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
         resolve(null);
@@ -78,7 +87,7 @@ const ReportIssue: React.FC = () => {
         (position) => {
           resolve({
             lat: position.coords.latitude,
-            lng: position.coords.longitude
+            lng: position.coords.longitude,
           });
         },
         () => resolve(null),
@@ -91,16 +100,16 @@ const ReportIssue: React.FC = () => {
   const handleImageSelected = async (file: File) => {
     setCapturedImage(file);
     setShowCamera(false);
-    
+
     // Try to get location from EXIF first
     const exifLocation = await extractGPSFromImage(file);
-    
+
     if (exifLocation) {
       setLocation(exifLocation);
       setNeedsManualLocation(false);
       toast({
-        title: t('success'),
-        description: 'Location obtained from image EXIF data',
+        title: t("success"),
+        description: "Location obtained from image EXIF data",
       });
     } else {
       // Try browser geolocation
@@ -109,15 +118,15 @@ const ReportIssue: React.FC = () => {
         setLocation(browserLocation);
         setNeedsManualLocation(false);
         toast({
-          title: t('success'),
-          description: 'Location obtained from browser',
+          title: t("success"),
+          description: "Location obtained from browser",
         });
       } else {
         setNeedsManualLocation(true);
         toast({
-          title: 'Location needed',
-          description: 'Please pin location on map',
-          variant: 'destructive'
+          title: "Location needed",
+          description: "Please pin location on map",
+          variant: "destructive",
         });
       }
     }
@@ -125,78 +134,114 @@ const ReportIssue: React.FC = () => {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file && file.type.startsWith("image/")) {
       handleImageSelected(file);
     }
   };
 
-  const handleLocationSelected = (selectedLocation: {lat: number, lng: number, address?: string}) => {
+  const handleLocationSelected = (selectedLocation: {
+    lat: number;
+    lng: number;
+    address?: string;
+  }) => {
     setLocation(selectedLocation);
     setNeedsManualLocation(false);
     setShowLocationPicker(false);
     toast({
-      title: t('success'),
-      description: 'Location set successfully',
+      title: t("success"),
+      description: "Location set successfully",
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!capturedImage) {
       toast({
-        title: t('error'),
-        description: 'Please upload an image',
-        variant: 'destructive'
+        title: t("error"),
+        description: "Please upload an image",
+        variant: "destructive",
       });
       return;
     }
 
     if (!location) {
       toast({
-        title: t('error'),
-        description: 'Please provide location',
-        variant: 'destructive'
+        title: t("error"),
+        description: "Please provide location",
+        variant: "destructive",
       });
       return;
     }
 
     if (needsManualLocation && !description.trim()) {
       toast({
-        title: t('error'),
-        description: 'Description is mandatory when location is selected manually',
-        variant: 'destructive'
+        title: t("error"),
+        description:
+          "Description is mandatory when location is selected manually",
+        variant: "destructive",
       });
       return;
     }
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const formData = new FormData();
+      formData.append("image", capturedImage);
 
-    toast({
-      title: t('success'),
-      description: 'Your report has been submitted successfully',
-    });
+      // Choose category: manual selection preferred, fallback to AI classification
+      const category = manualIssueType || classification || "other";
+      formData.append("category", category);
 
-    // Reset form
-    setCapturedImage(null);
-    setLocation(null);
-    setDescription('');
-    setUrgency('medium');
-    setContact('');
-    setClassification('');
-    setManualIssueType('');
-    setNeedsManualLocation(false);
-    setIsSubmitting(false);
+      formData.append("location_lat", location.lat.toString());
+      formData.append("location_lng", location.lng.toString());
+      formData.append("address", location.address || "");
+      formData.append("description", description);
+      formData.append("urgency", urgency);
+      formData.append("contact", contact);
+      formData.append("classification", classification);
+
+      const response = await fetch("http://localhost:3000/api/submit-report", {
+        method: "POST",
+        body: formData,
+      });
+
+     if (!response.ok) {
+  const errorData = await response.json();
+  throw new Error(errorData.error || 'Unknown error');
+}
+
+      toast({
+        title: t("success"),
+        description: "Your report has been submitted successfully",
+      });
+
+      // Reset form
+      setCapturedImage(null);
+      setLocation(null);
+      setDescription("");
+      setUrgency("medium");
+      setContact("");
+      setClassification("");
+      setManualIssueType("");
+      setNeedsManualLocation(false);
+    } catch (error) {
+      toast({
+        title: t("error"),
+        description: (error as Error).message || "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const removeImage = () => {
     setCapturedImage(null);
     setLocation(null);
-    setClassification('');
-    setManualIssueType('');
+    setClassification("");
+    setManualIssueType("");
     setNeedsManualLocation(false);
   };
 
@@ -209,10 +254,10 @@ const ReportIssue: React.FC = () => {
             <div className="relative z-10">
               <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 animate-bounce-in">
                 <AlertCircle className="inline-block mr-4 h-12 w-12 animate-float" />
-                {t('report_issue_title')}
+                {t("report_issue_title")}
               </h1>
               <p className="text-xl text-white/90 animate-slide-in-right">
-                {t('report_issue_subtitle')}
+                {t("report_issue_subtitle")}
               </p>
             </div>
           </div>
@@ -221,13 +266,12 @@ const ReportIssue: React.FC = () => {
         {/* Report Form */}
         <div className="municipal-card animate-scale-in">
           <form onSubmit={handleSubmit} className="space-y-8 p-8">
-            
             {/* Image Capture/Upload Section */}
             <div className="space-y-4 animate-slide-in-left">
               <label className="block text-lg font-semibold text-municipal-blue">
-                {t('image_required')}
+                {t("image_required")}
               </label>
-              
+
               {!capturedImage ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
@@ -236,8 +280,12 @@ const ReportIssue: React.FC = () => {
                     className="municipal-card p-6 text-center hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                   >
                     <Camera className="mx-auto h-12 w-12 text-municipal-blue mb-4" />
-                    <h3 className="font-semibold text-municipal-blue mb-2">{t('use_camera')}</h3>
-                    <p className="text-gray-600 text-sm">{t('take_photo_directly')}</p>
+                    <h3 className="font-semibold text-municipal-blue mb-2">
+                      {t("use_camera")}
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      {t("take_photo_directly")}
+                    </p>
                   </button>
 
                   <button
@@ -246,8 +294,12 @@ const ReportIssue: React.FC = () => {
                     className="municipal-card p-6 text-center hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                   >
                     <Upload className="mx-auto h-12 w-12 text-municipal-blue mb-4" />
-                    <h3 className="font-semibold text-municipal-blue mb-2">{t('upload_file')}</h3>
-                    <p className="text-gray-600 text-sm">{t('choose_from_gallery')}</p>
+                    <h3 className="font-semibold text-municipal-blue mb-2">
+                      {t("upload_file")}
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      {t("choose_from_gallery")}
+                    </p>
                   </button>
                 </div>
               ) : (
@@ -278,8 +330,8 @@ const ReportIssue: React.FC = () => {
 
             {/* AI Classification */}
             {capturedImage && (
-              <AIClassification 
-                image={capturedImage} 
+              <AIClassification
+                image={capturedImage}
                 onClassification={setClassification}
               />
             )}
@@ -313,18 +365,24 @@ const ReportIssue: React.FC = () => {
             {/* Location Section */}
             <div className="space-y-4 animate-slide-in-right">
               <label className="block text-lg font-semibold text-municipal-blue">
-                {t('location')} {needsManualLocation && <span className="text-red-500">*</span>}
+                {t("location")}{" "}
+                {needsManualLocation && <span className="text-red-500">*</span>}
               </label>
-              
+
               {location ? (
                 <div className="municipal-card p-4 bg-green-50 border-green-200">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <MapPin className="h-5 w-5 text-green-600" />
                       <div>
-                        <p className="font-medium text-green-800">{t('location_set')}</p>
+                        <p className="font-medium text-green-800">
+                          {t("location_set")}
+                        </p>
                         <p className="text-sm text-green-600">
-                          {location.address || `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`}
+                          {location.address ||
+                            `${location.lat.toFixed(6)}, ${location.lng.toFixed(
+                              6
+                            )}`}
                         </p>
                       </div>
                     </div>
@@ -333,7 +391,7 @@ const ReportIssue: React.FC = () => {
                       onClick={() => setShowLocationPicker(true)}
                       className="text-blue-600 hover:text-blue-800 font-medium"
                     >
-                      {t('change')}
+                      {t("change")}
                     </button>
                   </div>
                 </div>
@@ -344,8 +402,12 @@ const ReportIssue: React.FC = () => {
                   className="w-full municipal-card p-6 text-center hover:shadow-lg transition-all duration-300 transform hover:scale-105"
                 >
                   <MapIcon className="mx-auto h-12 w-12 text-municipal-blue mb-4" />
-                  <h3 className="font-semibold text-municipal-blue mb-2">{t('select_location')}</h3>
-                  <p className="text-gray-600 text-sm">{t('click_map_to_pin')}</p>
+                  <h3 className="font-semibold text-municipal-blue mb-2">
+                    {t("select_location")}
+                  </h3>
+                  <p className="text-gray-600 text-sm">
+                    {t("click_map_to_pin")}
+                  </p>
                 </button>
               )}
             </div>
@@ -354,18 +416,18 @@ const ReportIssue: React.FC = () => {
             {needsManualLocation && (
               <div className="space-y-4 animate-slide-in-left">
                 <label className="block text-lg font-semibold text-municipal-blue">
-                  {t('issue_description_required')}
+                  {t("issue_description_required")}
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={4}
                   className="municipal-input w-full resize-none"
-                  placeholder={t('describe_issue_detail')}
+                  placeholder={t("describe_issue_detail")}
                   required
                 />
                 <p className="text-sm text-amber-600">
-                  {t('manual_location_description_required')}
+                  {t("manual_location_description_required")}
                 </p>
               </div>
             )}
@@ -374,14 +436,14 @@ const ReportIssue: React.FC = () => {
             {!needsManualLocation && (
               <div className="space-y-4 animate-slide-in-left">
                 <label className="block text-lg font-semibold text-municipal-blue">
-                  {t('issue_description_optional')}
+                  {t("issue_description_optional")}
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={3}
                   className="municipal-input w-full resize-none"
-                  placeholder={t('additional_info')}
+                  placeholder={t("additional_info")}
                 />
               </div>
             )}
@@ -389,7 +451,7 @@ const ReportIssue: React.FC = () => {
             {/* Urgency Selection */}
             <div className="space-y-4 animate-slide-in-right">
               <label className="block text-lg font-semibold text-municipal-blue">
-                {t('priority')}
+                {t("priority")}
               </label>
               <div className="grid grid-cols-3 gap-3">
                 {urgencyOptions.map((option) => (
@@ -399,11 +461,15 @@ const ReportIssue: React.FC = () => {
                     onClick={() => setUrgency(option.key)}
                     className={`p-4 rounded-lg border-2 transition-all duration-300 transform hover:scale-105 ${
                       urgency === option.key
-                        ? 'border-municipal-blue bg-municipal-blue text-white'
-                        : 'border-gray-200 hover:border-municipal-blue'
+                        ? "border-municipal-blue bg-municipal-blue text-white"
+                        : "border-gray-200 hover:border-municipal-blue"
                     }`}
                   >
-                    <div className={urgency === option.key ? 'text-white' : option.color}>
+                    <div
+                      className={
+                        urgency === option.key ? "text-white" : option.color
+                      }
+                    >
                       {option.label}
                     </div>
                   </button>
@@ -414,14 +480,14 @@ const ReportIssue: React.FC = () => {
             {/* Contact Information */}
             <div className="space-y-4 animate-slide-in-left">
               <label className="block text-lg font-semibold text-municipal-blue">
-                {t('contact_info')}
+                {t("contact_info")}
               </label>
               <input
                 type="text"
                 value={contact}
                 onChange={(e) => setContact(e.target.value)}
                 className="municipal-input w-full"
-                placeholder={t('phone_email_optional')}
+                placeholder={t("phone_email_optional")}
               />
             </div>
 
@@ -429,18 +495,23 @@ const ReportIssue: React.FC = () => {
             <div className="flex justify-center pt-6 animate-bounce-in">
               <button
                 type="submit"
-                disabled={isSubmitting || !capturedImage || !location || (needsManualLocation && !description.trim())}
+                disabled={
+                  isSubmitting ||
+                  !capturedImage ||
+                  !location ||
+                  (needsManualLocation && !description.trim())
+                }
                 className="municipal-button disabled:opacity-50 disabled:cursor-not-allowed px-12 py-4 text-lg"
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    {t('submitting')}
+                    {t("submitting")}
                   </>
                 ) : (
                   <>
                     <CheckCircle className="mr-2 h-5 w-5" />
-                    {t('submit_report')}
+                    {t("submit_report")}
                   </>
                 )}
               </button>
@@ -455,11 +526,9 @@ const ReportIssue: React.FC = () => {
               <Camera className="h-10 w-10 text-blue-600" />
             </div>
             <h3 className="font-semibold text-lg text-municipal-blue mb-2">
-              {t('smart_photo')}
+              {t("smart_photo")}
             </h3>
-            <p className="text-gray-600 text-sm">
-              {t('ai_identifies_issue')}
-            </p>
+            <p className="text-gray-600 text-sm">{t("ai_identifies_issue")}</p>
           </div>
 
           <div className="municipal-card p-6 text-center">
@@ -467,11 +536,9 @@ const ReportIssue: React.FC = () => {
               <MapPin className="h-10 w-10 text-green-600" />
             </div>
             <h3 className="font-semibold text-lg text-municipal-blue mb-2">
-              {t('automatic_location')}
+              {t("automatic_location")}
             </h3>
-            <p className="text-gray-600 text-sm">
-              {t('auto_gps_data')}
-            </p>
+            <p className="text-gray-600 text-sm">{t("auto_gps_data")}</p>
           </div>
 
           <div className="municipal-card p-6 text-center">
@@ -479,11 +546,9 @@ const ReportIssue: React.FC = () => {
               <CheckCircle className="h-10 w-10 text-purple-600" />
             </div>
             <h3 className="font-semibold text-lg text-municipal-blue mb-2">
-              {t('quick_process')}
+              {t("quick_process")}
             </h3>
-            <p className="text-gray-600 text-sm">
-              {t('report_without_login')}
-            </p>
+            <p className="text-gray-600 text-sm">{t("report_without_login")}</p>
           </div>
         </div>
       </div>
