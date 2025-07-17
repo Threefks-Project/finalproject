@@ -29,12 +29,25 @@ const ReportIssue: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [needsManualLocation, setNeedsManualLocation] = useState(false);
   const [classification, setClassification] = useState<string>('');
+  const [manualIssueType, setManualIssueType] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const urgencyOptions = [
     { key: 'low', label: t('low_priority'), color: 'text-green-600' },
     { key: 'medium', label: t('medium_priority'), color: 'text-yellow-600' },
     { key: 'high', label: t('high_priority'), color: 'text-red-600' }
+  ];
+
+  const issueTypes = [
+    { key: 'pothole', label: 'Road/Pothole Issues' },
+    { key: 'streetlight', label: 'Street Lighting' },
+    { key: 'garbage', label: 'Garbage Collection' },
+    { key: 'water', label: 'Water Supply Issues' },
+    { key: 'drainage', label: 'Drainage Problems' },
+    { key: 'traffic', label: 'Traffic Issues' },
+    { key: 'noise', label: 'Noise Pollution' },
+    { key: 'construction', label: 'Illegal Construction' },
+    { key: 'other', label: 'Other' }
   ];
 
   // Extract EXIF GPS data from image using exifr
@@ -174,6 +187,7 @@ const ReportIssue: React.FC = () => {
     setUrgency('medium');
     setContact('');
     setClassification('');
+    setManualIssueType('');
     setNeedsManualLocation(false);
     setIsSubmitting(false);
   };
@@ -182,6 +196,7 @@ const ReportIssue: React.FC = () => {
     setCapturedImage(null);
     setLocation(null);
     setClassification('');
+    setManualIssueType('');
     setNeedsManualLocation(false);
   };
 
@@ -268,6 +283,32 @@ const ReportIssue: React.FC = () => {
                 onClassification={setClassification}
               />
             )}
+
+            {/* Manual Issue Type Selection */}
+            <div className="space-y-4 animate-slide-in-left">
+              <label className="block text-lg font-semibold text-municipal-blue">
+                Issue Type (Manual Selection)
+              </label>
+              <select
+                value={manualIssueType}
+                onChange={(e) => setManualIssueType(e.target.value)}
+                className="municipal-input w-full"
+              >
+                <option value="">Select issue type manually</option>
+                {issueTypes.map((type) => (
+                  <option key={type.key} value={type.key}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+              {classification && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    <strong>AI Detection:</strong> {classification}
+                  </p>
+                </div>
+              )}
+            </div>
 
             {/* Location Section */}
             <div className="space-y-4 animate-slide-in-right">

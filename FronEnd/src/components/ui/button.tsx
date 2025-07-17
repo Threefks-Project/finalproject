@@ -18,6 +18,9 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        municipal: "bg-municipal-blue text-white hover:bg-municipal-blue/90 transition-smooth",
+        "municipal-outline": "border-2 border-white text-white bg-transparent hover:bg-white hover:text-municipal-blue transition-smooth",
+        "municipal-green": "bg-municipal-green text-white hover:bg-municipal-green/90 transition-smooth",
       },
       size: {
         default: "h-10 px-4 py-2",
