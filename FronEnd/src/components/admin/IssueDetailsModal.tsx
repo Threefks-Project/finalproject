@@ -153,21 +153,25 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
             <div className="municipal-card p-6">
               <label className="block text-sm font-medium text-gray-700 mb-4">Attached Images</label>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {issue.images.map((image, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={image}
-                      alt={`Issue evidence ${index + 1}`}
-                      className="w-full h-64 object-cover rounded-lg border shadow-md hover:shadow-xl transition-shadow duration-300"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
-                      <Camera className="h-10 w-10 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                {issue.images.map((image, index) => {
+                  const isAbsolute = image.startsWith('http://') || image.startsWith('https://');
+                  const imageUrl = isAbsolute ? image : `http://localhost:3000/${image.replace(/^\/+/, '')}`;
+                  return (
+                    <div key={index} className="relative group">
+                      <img
+                        src={imageUrl}
+                        alt={`Issue evidence ${index + 1}`}
+                        className="w-full h-64 object-cover rounded-lg border shadow-md hover:shadow-xl transition-shadow duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center">
+                        <Camera className="h-10 w-10 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-sm">
+                        Image {index + 1}
+                      </div>
                     </div>
-                    <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-sm">
-                      Image {index + 1}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

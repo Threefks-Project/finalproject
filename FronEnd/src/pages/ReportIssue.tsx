@@ -142,7 +142,7 @@ const ReportIssue: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!capturedImage) {
       toast({
         title: t('error'),
@@ -172,24 +172,51 @@ const ReportIssue: React.FC = () => {
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Build FormData
+    const formData = new FormData();
+    formData.append('image', capturedImage);
+    formData.append('location_lat', String(location.lat));
+    formData.append('location_lng', String(location.lng));
+    formData.append('address', location.address || '');
+    formData.append('description', description);
+    formData.append('urgency', urgency);
+    formData.append('contact', contact);
+    formData.append('classification', classification || manualIssueType || 'others');
+    formData.append('category', classification || manualIssueType || 'others');
 
-    toast({
-      title: t('success'),
-      description: 'Your report has been submitted successfully',
-    });
+    try {
+      const res = await fetch('/api/submit-report', {
+        method: 'POST',
+        body: formData
+      });
 
-    // Reset form
-    setCapturedImage(null);
-    setLocation(null);
-    setDescription('');
-    setUrgency('medium');
-    setContact('');
-    setClassification('');
-    setManualIssueType('');
-    setNeedsManualLocation(false);
-    setIsSubmitting(false);
+      if (!res.ok) {
+        throw new Error('Failed to submit report');
+      }
+
+      toast({
+        title: t('success'),
+        description: 'Your report has been submitted successfully',
+      });
+
+      // Reset form
+      setCapturedImage(null);
+      setLocation(null);
+      setDescription('');
+      setUrgency('medium');
+      setContact('');
+      setClassification('');
+      setManualIssueType('');
+      setNeedsManualLocation(false);
+    } catch (err: any) {
+      toast({
+        title: t('error'),
+        description: err.message || 'Failed to submit report',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const removeImage = () => {

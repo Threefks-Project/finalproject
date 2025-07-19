@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, Clock, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import IssueCard from './IssueCard';
@@ -27,102 +27,62 @@ const IssueManagement: React.FC = () => {
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
-  const [issues, setIssues] = useState<Issue[]>([
-    {
-      id: 'ISS-001',
-      title: 'Broken Street Light',
-      description: 'Street light on Main Street is not working for the past 3 days. This creates safety concerns for pedestrians and vehicles during night time.',
-      location: 'Main Street, Ward 5',
-      urgency: 'high',
-      status: 'pending',
-      reportedBy: 'John Doe',
-      reportedAt: '2024-01-20 10:30 AM',
-      category: 'others',
-      hasImages: true,
-      images: ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400', 'https://images.unsplash.com/photo-1543589077-47d81606c1bf?w=400']
-    },
-    {
-      id: 'ISS-002',
-      title: 'Large Pothole on Central Road',
-      description: 'Large pothole on Central Road causing traffic issues and vehicle damage. Multiple citizens have complained about this.',
-      location: 'Central Road, Ward 3',
-      urgency: 'high',
-      status: 'verified',
-      reportedBy: 'Jane Smith',
-      reportedAt: '2024-01-19 02:15 PM',
-      category: 'pothole',
-      hasImages: true,
-      images: ['https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400', 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=400']
-    },
-    {
-      id: 'ISS-003',
-      title: 'Garbage Collection Missed',
-      description: 'Garbage not collected for 3 consecutive days in residential area. Causing health and hygiene issues.',
-      location: 'Residential Area, Ward 7',
-      urgency: 'medium',
-      status: 'resolved',
-      reportedBy: 'Ram Prasad',
-      reportedAt: '2024-01-18 08:45 AM',
-      category: 'garbage',
-      hasImages: true,
-      images: ['https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=400']
-    },
-    {
-      id: 'ISS-004',
-      title: 'Overflowing Dustbin in Market',
-      description: 'Public dustbin is overflowing with waste and creating unhygienic conditions in the market area.',
-      location: 'Market Area, Ward 2',
-      urgency: 'medium',
-      status: 'pending',
-      reportedBy: 'Sita Devi',
-      reportedAt: '2024-01-21 09:15 AM',
-      category: 'garbage',
-      hasImages: true,
-      images: ['https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=400', 'https://images.unsplash.com/photo-1604187351574-c75ca79f5807?w=400']
-    },
-    {
-      id: 'ISS-005',
-      title: 'Road Crack Development',
-      description: 'Small crack in the road surface that might develop into a larger pothole if not addressed soon.',
-      location: 'School Road, Ward 4',
-      urgency: 'low',
-      status: 'pending',
-      reportedBy: 'Hari Kumar',
-      reportedAt: '2024-01-20 03:45 PM',
-      category: 'pothole',
-      hasImages: false
-    },
-    {
-      id: 'ISS-006',
-      title: 'Illegal Garbage Dumping',
-      description: 'Someone has been dumping construction waste in the public park area, causing environmental concerns.',
-      location: 'City Park, Ward 1',
-      urgency: 'high',
-      status: 'verified',
-      reportedBy: 'Maya Sharma',
-      reportedAt: '2024-01-22 11:20 AM',
-      category: 'garbage',
-      hasImages: true,
-      images: ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400', 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=400', 'https://images.unsplash.com/photo-1604187351574-c75ca79f5807?w=400']
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    let url = '/api/reports';
+    if (activeCategory !== 'all') {
+      url += `?category=${activeCategory}`;
     }
-  ]);
+    fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch issues');
+        return res.json();
+      })
+      .then(data => {
+        setIssues(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [activeCategory]);
 
   const handleStatusChange = (issueId: string, newStatus: string) => {
-    setIssues(prevIssues =>
-      prevIssues.map(issue =>
-        issue.id === issueId ? { ...issue, status: newStatus as Issue['status'] } : issue
-      )
-    );
-    
-    // Update selected issue if it's currently shown
-    if (selectedIssue && selectedIssue.id === issueId) {
-      setSelectedIssue({ ...selectedIssue, status: newStatus as Issue['status'] });
-    }
-    
-    toast({
-      title: 'Status Updated',
-      description: `Issue ${issueId} status changed to ${newStatus}`
-    });
+    const issue = issues.find(i => i.id === issueId);
+    if (!issue) return;
+    fetch(`/api/reports/${issue.category}/${issueId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to update status');
+        setIssues(prevIssues =>
+          prevIssues.map(i =>
+            i.id === issueId ? { ...i, status: newStatus as Issue['status'] } : i
+          )
+        );
+        if (selectedIssue && selectedIssue.id === issueId) {
+          setSelectedIssue({ ...selectedIssue, status: newStatus as Issue['status'] });
+        }
+        toast({
+          title: 'Status Updated',
+          description: `Issue ${issueId} status changed to ${newStatus}`
+        });
+      })
+      .catch(err => {
+        toast({
+          title: 'Error',
+          description: err.message,
+          variant: 'destructive'
+        });
+      });
   };
 
   const handleViewDetails = (issue: Issue) => {
@@ -131,11 +91,30 @@ const IssueManagement: React.FC = () => {
   };
 
   const handleDeleteIssue = (issueId: string) => {
-    setIssues(prevIssues => prevIssues.filter(issue => issue.id !== issueId));
-    toast({
-      title: 'Issue Deleted',
-      description: `Issue ${issueId} has been deleted`
-    });
+    const issue = issues.find(i => i.id === issueId);
+    if (!issue) return;
+    fetch(`/api/reports/${issue.category}/${issueId}`, {
+      method: 'DELETE'
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to delete issue');
+        setIssues(prevIssues => prevIssues.filter(i => i.id !== issueId));
+        toast({
+          title: 'Issue Deleted',
+          description: `Issue ${issueId} has been deleted`
+        });
+        if (selectedIssue && selectedIssue.id === issueId) {
+          setShowDetails(false);
+          setSelectedIssue(null);
+        }
+      })
+      .catch(err => {
+        toast({
+          title: 'Error',
+          description: err.message,
+          variant: 'destructive'
+        });
+      });
   };
 
   const handleCloseDetails = () => {
@@ -212,11 +191,11 @@ const IssueManagement: React.FC = () => {
             onClick={() => setActiveCategory('others')}
             className={`px-8 py-6 text-base font-medium whitespace-nowrap border-b-3 transition-all duration-300 ${
               activeCategory === 'others'
-                ? 'border-municipal-blue text-municipal-blue bg-gradient-to-r from-blue-50 to-blue-100/50'
+                ? 'border-gray-500 text-gray-700 bg-gradient-to-r from-gray-50 to-gray-100/50'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}
           >
-            ⚙️ Other Issues ({getCategoryStats('others')})
+            ⚙️ Others ({getCategoryStats('others')})
           </button>
         </div>
       </div>
@@ -262,7 +241,17 @@ const IssueManagement: React.FC = () => {
 
       {/* Issues List */}
       <div className="space-y-4">
-        {filteredIssues.map((issue) => (
+        {loading && (
+          <div className="municipal-card text-center py-16">
+            <p className="text-gray-500 text-xl mb-2">Loading issues...</p>
+          </div>
+        )}
+        {error && (
+          <div className="municipal-card text-center py-16">
+            <p className="text-red-500 text-xl mb-2">{error}</p>
+          </div>
+        )}
+        {!loading && !error && filteredIssues.map((issue) => (
           <IssueCard
             key={issue.id}
             issue={issue}
@@ -271,8 +260,7 @@ const IssueManagement: React.FC = () => {
             onDelete={handleDeleteIssue}
           />
         ))}
-        
-        {filteredIssues.length === 0 && (
+        {!loading && !error && filteredIssues.length === 0 && (
           <div className="municipal-card text-center py-16">
             <div className="text-gray-400 mb-6">
               <Clock className="h-16 w-16 mx-auto" />

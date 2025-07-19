@@ -9,6 +9,9 @@ export default defineConfig(({ mode }) => ({
     host: "::", // IPv6 + LAN access
     port: 8080,
     allowedHosts: true,
+    proxy: {
+      '/api': 'http://localhost:3000'
+    }
   },
   plugins: [
     react(),
