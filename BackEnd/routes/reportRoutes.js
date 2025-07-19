@@ -428,17 +428,47 @@ async function calculateTotalUrgencyScore(lat, lng, category, size, manualUrgenc
 // === Your existing POST /submit-report route with added size detection ===
 router.post('/submit-report', upload.single('image'), async (req, res) => {
   try {
-    // Your existing category detection logic
+    console.log('=== REPORT SUBMISSION START ===');
+    console.log('Request body:', req.body);
+    console.log('File:', req.file ? req.file.originalname : 'No file');
+
     const allowedCategories = ['pothole', 'garbage', 'others'];
 
+    // Category resolution logic
     let category = '';
-    if (req.body.category && typeof req.body.category === 'string' && allowedCategories.includes(req.body.category.trim().toLowerCase())) {
-      category = req.body.category.trim().toLowerCase();
-    } else if (req.body.classification && typeof req.body.classification === 'string' && allowedCategories.includes(req.body.classification.trim().toLowerCase())) {
-      category = req.body.classification.trim().toLowerCase();
+    let classification = '';
+    
+    // Get AI classification and manual selection
+    const aiClassification = req.body.classification || '';
+    const manualSelection = req.body.category || '';
+    
+    console.log('AI Classification:', aiClassification);
+    console.log('Manual Selection:', manualSelection);
+    
+    // Priority: Manual selection overrides AI classification
+    if (manualSelection && allowedCategories.includes(manualSelection.trim().toLowerCase())) {
+      category = manualSelection.trim().toLowerCase();
+      classification = manualSelection.trim().toLowerCase();
+      console.log('✅ Using manual selection:', category);
+    } else if (aiClassification && allowedCategories.includes(aiClassification.trim().toLowerCase())) {
+      category = aiClassification.trim().toLowerCase();
+      classification = aiClassification.trim().toLowerCase();
+      console.log('✅ Using AI classification:', category);
     } else {
-      category = 'others';
+      // Map other AI classifications to 'others'
+      if (aiClassification) {
+        category = 'others';
+        classification = aiClassification.trim().toLowerCase();
+        console.log('🔄 AI classified as', aiClassification, '→ mapped to others');
+      } else {
+        category = 'others';
+        classification = 'others';
+        console.log('❓ No classification provided → defaulting to others');
+      }
     }
+    
+    console.log('Final Category:', category);
+    console.log('Final Classification:', classification);
 
     if (!req.file) {
       return res.status(400).json({ error: 'Image is required' });
@@ -465,8 +495,7 @@ router.post('/submit-report', upload.single('image'), async (req, res) => {
       address,
       description,
       urgency,
-      contact,
-      classification
+      contact
     } = req.body;
 
     // Get human-readable address from coordinates

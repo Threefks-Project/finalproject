@@ -39,16 +39,36 @@ const ReportIssue: React.FC = () => {
   ];
 
   const issueTypes = [
-    { key: 'pothole', label: 'Road/Pothole Issues' },
-    { key: 'streetlight', label: 'Street Lighting' },
-    { key: 'garbage', label: 'Garbage Collection' },
-    { key: 'water', label: 'Water Supply Issues' },
-    { key: 'drainage', label: 'Drainage Problems' },
-    { key: 'traffic', label: 'Traffic Issues' },
-    { key: 'noise', label: 'Noise Pollution' },
-    { key: 'construction', label: 'Illegal Construction' },
-    { key: 'other', label: 'Other' }
+    { key: 'pothole', label: 'Road/Pothole Issues', category: 'pothole' },
+    { key: 'streetlight', label: 'Street Lighting', category: 'others' },
+    { key: 'garbage', label: 'Garbage Collection', category: 'garbage' },
+    { key: 'water', label: 'Water Supply Issues', category: 'others' },
+    { key: 'drainage', label: 'Drainage Problems', category: 'others' },
+    { key: 'traffic', label: 'Traffic Issues', category: 'others' },
+    { key: 'noise', label: 'Noise Pollution', category: 'others' },
+    { key: 'construction', label: 'Illegal Construction', category: 'others' },
+    { key: 'other', label: 'Other', category: 'others' }
   ];
+
+  // Function to determine final category
+  const getFinalCategory = () => {
+    // If user manually selected something, use that (respect user choice)
+    if (manualIssueType) {
+      const selectedType = issueTypes.find(type => type.key === manualIssueType);
+      return selectedType ? selectedType.category : 'others';
+    }
+    
+    // If AI classified something, use that
+    if (classification) {
+      // Map AI classification to supported categories
+      if (classification === 'pothole') return 'pothole';
+      if (classification === 'garbage') return 'garbage';
+      return 'others'; // Any other AI classification goes to others
+    }
+    
+    // Default fallback
+    return 'others';
+  };
 
   // Extract EXIF GPS data from image using exifr
   const extractGPSFromImage = async (file: File): Promise<{lat: number, lng: number} | null> => {
@@ -172,6 +192,10 @@ const ReportIssue: React.FC = () => {
 
     setIsSubmitting(true);
 
+    // Determine final category
+    const finalCategory = getFinalCategory();
+    const finalClassification = manualIssueType || classification || 'others';
+
     // Build FormData
     const formData = new FormData();
     formData.append('image', capturedImage);
@@ -181,8 +205,14 @@ const ReportIssue: React.FC = () => {
     formData.append('description', description);
     formData.append('urgency', urgency);
     formData.append('contact', contact);
-    formData.append('classification', classification || manualIssueType || 'others');
-    formData.append('category', classification || manualIssueType || 'others');
+    formData.append('classification', finalClassification);
+    formData.append('category', finalCategory);
+
+    console.log('Submitting report with:');
+    console.log('- AI Classification:', classification);
+    console.log('- Manual Selection:', manualIssueType);
+    console.log('- Final Category:', finalCategory);
+    console.log('- Final Classification:', finalClassification);
 
     try {
       const res = await fetch('/api/submit-report', {
@@ -194,9 +224,11 @@ const ReportIssue: React.FC = () => {
         throw new Error('Failed to submit report');
       }
 
+      const result = await res.json();
+      
       toast({
         title: t('success'),
-        description: 'Your report has been submitted successfully',
+        description: `Your ${finalCategory} report has been submitted successfully`,
       });
 
       // Reset form
@@ -255,6 +287,59 @@ const ReportIssue: React.FC = () => {
                 {t('image_required')}
               </label>
               
+              {/* Photo Instructions */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <details className="group">
+                  <summary className="cursor-pointer list-none">
+                    <h4 className="font-semibold text-blue-800 mb-3 flex items-center group-open:mb-3">
+                      📸 Photo Guidelines for Better AI Detection
+                      <span className="ml-auto text-blue-600 group-open:hidden">(Click to expand)</span>
+                      <span className="ml-auto text-blue-600 hidden group-open:inline">(Click to collapse)</span>
+                    </h4>
+                  </summary>
+                  <div className="space-y-3 text-sm text-blue-700">
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-medium">🕳️ Potholes:</span>
+                      <span>Stand 2-3 meters away, ensure the entire pothole and surrounding road surface is visible. Include road markings or edges for context.</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-medium">🗑️ Garbage:</span>
+                      <span>Capture from 3-4 meters away showing the garbage pile and surrounding area. Include landmarks or street signs for location context.</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-medium">💡 Street Lights:</span>
+                      <span>Take photo from 5-6 meters away showing the light pole and surrounding street area. Include road or sidewalk for context.</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-medium">🚰 Water Issues:</span>
+                      <span>Stand 2-3 meters away capturing the water problem and affected area. Include pipes, drains, or street context.</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-medium">🌊 Drainage:</span>
+                      <span>Capture from 2-3 meters showing the blocked drain and surrounding area. Include street or sidewalk for context.</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-medium">🚦 Traffic Issues:</span>
+                      <span>Take photo from 5-6 meters showing the traffic problem and road intersection. Include traffic signs or signals if relevant.</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-600 font-medium">🏗️ Construction:</span>
+                      <span>Capture from 4-5 meters showing the construction site and surrounding area. Include street context and any safety issues.</span>
+                    </div>
+                    <div className="mt-3 p-2 bg-blue-100 rounded border-l-4 border-blue-400">
+                      <strong>💡 General Tips:</strong>
+                      <ul className="mt-1 space-y-1">
+                        <li>• Ensure good lighting (avoid shadows covering the issue)</li>
+                        <li>• Keep camera steady and level</li>
+                        <li>• Include surrounding context (road, sidewalk, buildings)</li>
+                        <li>• Avoid extreme angles or close-ups</li>
+                        <li>• Make sure the issue is clearly visible and identifiable</li>
+                      </ul>
+                    </div>
+                  </div>
+                </details>
+              </div>
+              
               {!capturedImage ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
@@ -291,6 +376,21 @@ const ReportIssue: React.FC = () => {
                   >
                     <X className="h-4 w-4" />
                   </button>
+                  
+                  {/* Photo Quality Reminder */}
+                  <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <span className="text-green-600 text-lg">✅</span>
+                      <div className="text-sm text-green-800">
+                        <strong>Photo Captured!</strong>
+                        <div className="mt-1 space-y-1">
+                          <div>• Make sure the issue is clearly visible</div>
+                          <div>• Check that surrounding context is included</div>
+                          <div>• If unclear, retake the photo following the guidelines above</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -321,20 +421,45 @@ const ReportIssue: React.FC = () => {
                 onChange={(e) => setManualIssueType(e.target.value)}
                 className="municipal-input w-full"
               >
-                <option value="">Select issue type manually</option>
+                <option value="">Select issue type manually (optional)</option>
                 {issueTypes.map((type) => (
                   <option key={type.key} value={type.key}>
-                    {type.label}
+                    {type.label} → {type.category.charAt(0).toUpperCase() + type.category.slice(1)}
                   </option>
                 ))}
               </select>
-              {classification && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-800">
-                    <strong>AI Detection:</strong> {classification}
-                  </p>
-                </div>
-              )}
+              
+              {/* Show AI vs Manual selection status */}
+              <div className="space-y-2">
+                {classification && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-800">
+                      <strong>🤖 AI Detection:</strong> {classification}
+                    </p>
+                  </div>
+                )}
+                
+                {manualIssueType && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p className="text-sm text-green-800">
+                      <strong>👤 Manual Selection:</strong> {issueTypes.find(t => t.key === manualIssueType)?.label}
+                      {classification && classification !== manualIssueType && (
+                        <span className="block text-xs text-green-600 mt-1">
+                          ⚠️ Overriding AI detection ({classification})
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+                
+                {!classification && !manualIssueType && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p className="text-sm text-yellow-800">
+                      <strong>ℹ️ No classification:</strong> Will be categorized as "Others"
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Location Section */}
