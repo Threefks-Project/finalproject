@@ -219,13 +219,13 @@ function calculateLocationTypeScore(addressData, lat, lng) {
   console.log('Combined text for analysis:', text);
   
   // High urgency locations (40%) - Highways, main roads, national routes
-  if (text.includes('highway') || text.includes('main road') || text.includes('ring road') || 
-      text.includes('national highway') || text.includes('provincial highway') ||
-      text.includes('trunk') || text.includes('primary') || text.includes('secondary') ||
-      text.includes('national') || text.includes('provincial') || text.includes('state highway') ||
-      text.includes('expressway') || text.includes('freeway') || text.includes('motorway') ||
-      text.includes('arterial') || text.includes('major road') || text.includes('main street') ||
-      text.includes('dharan marg') || text.includes('dharan') || text.includes('marg') ||
+  if (text.includes('highway') || text.includes('main road') ||text.includes('dharan')|| text.includes('ring road') || 
+      text.includes('national highway') || text.includes('provincial highway') || text.includes('puspalal')||text.includes('mandir')||
+      text.includes('trunk') || text.includes('primary') || text.includes('secondary') ||text.includes('shani')||
+      text.includes('national') || text.includes('provincial') || text.includes('state highway') ||text.includes('mahendra ')||
+      text.includes('expressway') || text.includes('freeway') ||text.includes('traffic')|| text.includes('motorway') ||
+      text.includes('arterial') || text.includes('major road') || text.includes('main street') ||text.includes('chowk ')||
+      text.includes('dharan marg') || text.includes('dharan') || text.includes('marg') ||text.includes('bargachhi')||
       text.includes('pokhara marg') || text.includes('kathmandu marg') || text.includes('biratnagar marg') ||
       text.includes('east west highway') || text.includes('mahendra highway') || text.includes('hulaki marg') ||
       text.includes('sagarmatha highway') || text.includes('prithvi highway') || text.includes('tribhuvan marg') ||
@@ -259,7 +259,7 @@ function calculateLocationTypeScore(addressData, lat, lng) {
   }
   
   // Medium-high urgency locations (28%) - Commercial areas, traffic junctions
-  if (text.includes('bazaar') || text.includes('chowk') || text.includes('traffic') || 
+  if (text.includes('bazaar') || text.includes('traffic') || 
       text.includes('bus park') || text.includes('market') || text.includes('commercial') ||
       text.includes('tertiary') || text.includes('residential') || text.includes('junction') ||
       text.includes('intersection') || text.includes('crossing') || text.includes('square') ||

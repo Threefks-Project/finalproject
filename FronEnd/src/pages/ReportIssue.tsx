@@ -30,7 +30,32 @@ const ReportIssue: React.FC = () => {
   const [needsManualLocation, setNeedsManualLocation] = useState(false);
   const [classification, setClassification] = useState<string>('');
   const [manualIssueType, setManualIssueType] = useState<string>('');
+  const [locationError, setLocationError] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Biratnagar boundary coordinates (approximate)
+  const BIRATNAGAR_BOUNDS = {
+    north: 26.5500, // Northern boundary
+    south: 26.4000, // Southern boundary
+    east: 87.3500,  // Eastern boundary
+    west: 87.2000   // Western boundary
+  };
+
+  // Function to check if location is within Biratnagar
+  const isWithinBiratnagar = (lat: number, lng: number): boolean => {
+    return lat >= BIRATNAGAR_BOUNDS.south && 
+           lat <= BIRATNAGAR_BOUNDS.north && 
+           lng >= BIRATNAGAR_BOUNDS.west && 
+           lng <= BIRATNAGAR_BOUNDS.east;
+  };
+
+  // Function to validate location
+  const validateLocation = (lat: number, lng: number): string => {
+    if (!isWithinBiratnagar(lat, lng)) {
+      return 'Location is outside Biratnagar city limits. Please select a location within Biratnagar.';
+    }
+    return '';
+  };
 
   const urgencyOptions = [
     { key: 'low', label: t('low_priority'), color: 'text-green-600' },
@@ -116,24 +141,49 @@ const ReportIssue: React.FC = () => {
     const exifLocation = await extractGPSFromImage(file);
     
     if (exifLocation) {
-      setLocation(exifLocation);
-      setNeedsManualLocation(false);
-      toast({
-        title: t('success'),
-        description: 'Location obtained from image EXIF data',
-      });
+      const error = validateLocation(exifLocation.lat, exifLocation.lng);
+      if (error) {
+        setLocationError(error);
+        setNeedsManualLocation(true);
+        toast({
+          title: 'Location Error',
+          description: error,
+          variant: 'destructive'
+        });
+      } else {
+        setLocation(exifLocation);
+        setLocationError('');
+        setNeedsManualLocation(false);
+        toast({
+          title: t('success'),
+          description: 'Location obtained from image EXIF data',
+        });
+      }
     } else {
       // Try browser geolocation
       const browserLocation = await getBrowserLocation();
       if (browserLocation) {
-        setLocation(browserLocation);
-        setNeedsManualLocation(false);
-        toast({
-          title: t('success'),
-          description: 'Location obtained from browser',
-        });
+        const error = validateLocation(browserLocation.lat, browserLocation.lng);
+        if (error) {
+          setLocationError(error);
+          setNeedsManualLocation(true);
+          toast({
+            title: 'Location Error',
+            description: error,
+            variant: 'destructive'
+          });
+        } else {
+          setLocation(browserLocation);
+          setLocationError('');
+          setNeedsManualLocation(false);
+          toast({
+            title: t('success'),
+            description: 'Location obtained from browser',
+          });
+        }
       } else {
         setNeedsManualLocation(true);
+        setLocationError('');
         toast({
           title: 'Location needed',
           description: 'Please pin location on map',
@@ -151,7 +201,19 @@ const ReportIssue: React.FC = () => {
   };
 
   const handleLocationSelected = (selectedLocation: {lat: number, lng: number, address?: string}) => {
+    const error = validateLocation(selectedLocation.lat, selectedLocation.lng);
+    if (error) {
+      setLocationError(error);
+      toast({
+        title: 'Location Error',
+        description: error,
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     setLocation(selectedLocation);
+    setLocationError('');
     setNeedsManualLocation(false);
     setShowLocationPicker(false);
     toast({
@@ -176,6 +238,18 @@ const ReportIssue: React.FC = () => {
       toast({
         title: t('error'),
         description: 'Please provide location',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Validate location is within Biratnagar
+    const locationValidationError = validateLocation(location.lat, location.lng);
+    if (locationValidationError) {
+      setLocationError(locationValidationError);
+      toast({
+        title: 'Location Error',
+        description: locationValidationError,
         variant: 'destructive'
       });
       return;
@@ -257,6 +331,7 @@ const ReportIssue: React.FC = () => {
     setClassification('');
     setManualIssueType('');
     setNeedsManualLocation(false);
+    setLocationError('');
   };
 
   return (
@@ -468,16 +543,40 @@ const ReportIssue: React.FC = () => {
                 {t('location')} {needsManualLocation && <span className="text-red-500">*</span>}
               </label>
               
+              {/* Location Error Display */}
+              {locationError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 text-lg">⚠️</span>
+                    <div className="text-sm text-red-800">
+                      <strong>Location Error:</strong>
+                      <div className="mt-1">{locationError}</div>
+                      <div className="mt-2 text-xs">
+                        Biratnagar boundaries: {BIRATNAGAR_BOUNDS.south.toFixed(4)}°N to {BIRATNAGAR_BOUNDS.north.toFixed(4)}°N, 
+                        {BIRATNAGAR_BOUNDS.west.toFixed(4)}°E to {BIRATNAGAR_BOUNDS.east.toFixed(4)}°E
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {location ? (
-                <div className="municipal-card p-4 bg-green-50 border-green-200">
+                <div className={`municipal-card p-4 ${locationError ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <MapPin className="h-5 w-5 text-green-600" />
+                      <MapPin className={`h-5 w-5 ${locationError ? 'text-red-600' : 'text-green-600'}`} />
                       <div>
-                        <p className="font-medium text-green-800">{t('location_set')}</p>
-                        <p className="text-sm text-green-600">
+                        <p className={`font-medium ${locationError ? 'text-red-800' : 'text-green-800'}`}>
+                          {locationError ? 'Location Error' : t('location_set')}
+                        </p>
+                        <p className={`text-sm ${locationError ? 'text-red-600' : 'text-green-600'}`}>
                           {location.address || `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`}
                         </p>
+                        {!locationError && (
+                          <p className="text-xs text-green-600 mt-1">
+                            ✅ Within Biratnagar city limits
+                          </p>
+                        )}
                       </div>
                     </div>
                     <button
@@ -498,6 +597,7 @@ const ReportIssue: React.FC = () => {
                   <MapIcon className="mx-auto h-12 w-12 text-municipal-blue mb-4" />
                   <h3 className="font-semibold text-municipal-blue mb-2">{t('select_location')}</h3>
                   <p className="text-gray-600 text-sm">{t('click_map_to_pin')}</p>
+                  <p className="text-xs text-municipal-blue mt-2">📍 Must be within Biratnagar city limits</p>
                 </button>
               )}
             </div>
