@@ -14,6 +14,7 @@ interface Issue {
   category: 'garbage' | 'pothole' | 'others';
   hasImages: boolean;
   images?: string[];
+  serialNumber?: number; // Add serial number for display
 }
 
 interface IssueCardProps {
@@ -56,7 +57,7 @@ const IssueCard: React.FC<IssueCardProps> = ({ issue, onStatusChange, onViewDeta
     <div className="municipal-card p-6 hover:shadow-lg transition-all duration-300">
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-3">
-          <span className="font-bold text-municipal-blue text-lg">{issue.id}</span>
+          <span className="font-bold text-municipal-blue text-lg">{issue.serialNumber || issue.id}</span>
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(issue.category)}`}>
             {issue.category.charAt(0).toUpperCase() + issue.category.slice(1)}
           </span>

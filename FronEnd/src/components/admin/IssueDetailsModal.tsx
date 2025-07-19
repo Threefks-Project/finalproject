@@ -14,6 +14,10 @@ interface Issue {
   category: 'garbage' | 'pothole' | 'others';
   hasImages: boolean;
   images?: string[];
+  location_lat?: number;
+  location_lng?: number;
+  size?: 'small' | 'medium' | 'large';
+  urgencyScore?: number;
 }
 
 interface IssueDetailsModalProps {
@@ -50,6 +54,20 @@ const getCategoryColor = (category: string) => {
     case 'others': return 'text-municipal-blue bg-blue-100';
     default: return 'text-gray-600 bg-gray-100';
   }
+};
+
+const getUrgencyScoreColor = (score: number) => {
+  if (score >= 80) return 'text-red-600 bg-red-100';
+  if (score >= 60) return 'text-orange-600 bg-orange-100';
+  if (score >= 40) return 'text-yellow-600 bg-yellow-100';
+  return 'text-green-600 bg-green-100';
+};
+
+const getUrgencyScoreLabel = (score: number) => {
+  if (score >= 80) return 'Critical';
+  if (score >= 60) return 'High';
+  if (score >= 40) return 'Medium';
+  return 'Low';
 };
 
 const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
@@ -119,9 +137,16 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
           
           <div className="municipal-card p-6">
             <label className="block text-sm font-medium text-gray-700 mb-3">Location</label>
-            <div className="flex items-center gap-3">
-              <MapPin className="h-5 w-5 text-municipal-blue" />
-              <p className="text-gray-600 text-lg">{issue.location}</p>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <MapPin className="h-5 w-5 text-municipal-blue" />
+                <p className="text-gray-600 text-lg font-medium">{issue.location}</p>
+              </div>
+              {issue.location_lat && issue.location_lng && (
+                <div className="text-sm text-gray-500 bg-gray-50 p-2 rounded">
+                  Coordinates: {issue.location_lat.toFixed(6)}, {issue.location_lng.toFixed(6)}
+                </div>
+              )}
             </div>
           </div>
           
@@ -142,12 +167,51 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
             </div>
           </div>
           
-          <div className="municipal-card p-6">
-            <label className="block text-sm font-medium text-gray-700 mb-3">Current Status</label>
-            <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(issue.status)}`}>
-              {issue.status.charAt(0).toUpperCase() + issue.status.slice(1)}
-            </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="municipal-card p-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Current Status</label>
+              <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(issue.status)}`}>
+                {issue.status.charAt(0).toUpperCase() + issue.status.slice(1)}
+              </span>
+            </div>
+            {issue.size && (
+              <div className="municipal-card p-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Issue Size</label>
+                <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${
+                  issue.size === 'large' ? 'text-red-600 bg-red-100' :
+                  issue.size === 'medium' ? 'text-yellow-600 bg-yellow-100' :
+                  'text-green-600 bg-green-100'
+                }`}>
+                  {issue.size.charAt(0).toUpperCase() + issue.size.slice(1)}
+                </span>
+              </div>
+            )}
           </div>
+          
+          {issue.urgencyScore !== undefined && (
+            <div className="municipal-card p-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Urgency Score</label>
+              <div className="flex items-center gap-4">
+                <span className={`inline-block px-4 py-2 rounded-full text-sm font-medium ${getUrgencyScoreColor(issue.urgencyScore)}`}>
+                  {getUrgencyScoreLabel(issue.urgencyScore)} ({issue.urgencyScore}%)
+                </span>
+                <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full ${
+                      issue.urgencyScore >= 80 ? 'bg-red-500' :
+                      issue.urgencyScore >= 60 ? 'bg-orange-500' :
+                      issue.urgencyScore >= 40 ? 'bg-yellow-500' :
+                      'bg-green-500'
+                    }`}
+                    style={{ width: `${issue.urgencyScore}%` }}
+                  ></div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Score calculated based on location type, repetition, size, and manual input
+              </p>
+            </div>
+          )}
           
           {issue.hasImages && issue.images && issue.images.length > 0 && (
             <div className="municipal-card p-6">

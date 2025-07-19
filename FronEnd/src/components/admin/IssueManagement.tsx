@@ -17,6 +17,7 @@ interface Issue {
   category: 'garbage' | 'pothole' | 'others';
   hasImages: boolean;
   images?: string[];
+  serialNumber?: number; // Add serial number for display
 }
 
 const IssueManagement: React.FC = () => {
@@ -136,7 +137,11 @@ const IssueManagement: React.FC = () => {
       
       return matchesSearch && matchesStatus && matchesUrgency && matchesCategory;
     })
-    .sort((a, b) => urgencyOrder[b.urgency] - urgencyOrder[a.urgency]);
+    .sort((a, b) => urgencyOrder[b.urgency] - urgencyOrder[a.urgency])
+    .map((issue, index) => ({
+      ...issue,
+      serialNumber: index + 1 // Add serial number (1, 2, 3...)
+    }));
 
   const getCategoryStats = (category: string) => {
     if (category === 'all') return issues.length;
