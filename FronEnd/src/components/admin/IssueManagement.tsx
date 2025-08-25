@@ -29,30 +29,39 @@ const IssueManagement: React.FC = () => {
   const [showDetails, setShowDetails] = useState(false);
 
   const [issues, setIssues] = useState<Issue[]>([]);
+  const [allIssues, setAllIssues] = useState<Issue[]>([]); // Store all issues for stats
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch all issues for statistics
   useEffect(() => {
     setLoading(true);
     setError(null);
-    let url = '/api/reports';
-    if (activeCategory !== 'all') {
-      url += `?category=${activeCategory}`;
-    }
-    fetch(url)
+    fetch('/api/reports')
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch issues');
         return res.json();
       })
       .then(data => {
-        setIssues(Array.isArray(data) ? data : []);
+        const allIssuesData = Array.isArray(data) ? data : [];
+        setAllIssues(allIssuesData);
         setLoading(false);
       })
       .catch(err => {
         setError(err.message);
         setLoading(false);
       });
-  }, [activeCategory]);
+  }, []);
+
+  // Fetch filtered issues based on active category
+  useEffect(() => {
+    if (activeCategory === 'all') {
+      setIssues(allIssues);
+    } else {
+      const filteredIssues = allIssues.filter(issue => issue.category === activeCategory);
+      setIssues(filteredIssues);
+    }
+  }, [activeCategory, allIssues]);
 
   const handleStatusChange = (issueId: string, newStatus: string) => {
     const issue = issues.find(i => i.id === issueId);
@@ -64,13 +73,22 @@ const IssueManagement: React.FC = () => {
     })
       .then(res => {
         if (!res.ok) throw new Error('Failed to update status');
+        const updatedIssue = { ...issue, status: newStatus as Issue['status'] };
+        
+        // Update both issues and allIssues
         setIssues(prevIssues =>
           prevIssues.map(i =>
-            i.id === issueId ? { ...i, status: newStatus as Issue['status'] } : i
+            i.id === issueId ? updatedIssue : i
           )
         );
+        setAllIssues(prevAllIssues =>
+          prevAllIssues.map(i =>
+            i.id === issueId ? updatedIssue : i
+          )
+        );
+        
         if (selectedIssue && selectedIssue.id === issueId) {
-          setSelectedIssue({ ...selectedIssue, status: newStatus as Issue['status'] });
+          setSelectedIssue(updatedIssue);
         }
         toast({
           title: 'Status Updated',
@@ -99,7 +117,11 @@ const IssueManagement: React.FC = () => {
     })
       .then(res => {
         if (!res.ok) throw new Error('Failed to delete issue');
+        
+        // Remove from both issues and allIssues
         setIssues(prevIssues => prevIssues.filter(i => i.id !== issueId));
+        setAllIssues(prevAllIssues => prevAllIssues.filter(i => i.id !== issueId));
+        
         toast({
           title: 'Issue Deleted',
           description: `Issue ${issueId} has been deleted`
@@ -133,9 +155,8 @@ const IssueManagement: React.FC = () => {
                            issue.location.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === 'all' || issue.status === statusFilter;
       const matchesUrgency = urgencyFilter === 'all' || issue.urgency === urgencyFilter;
-      const matchesCategory = activeCategory === 'all' || issue.category === activeCategory;
       
-      return matchesSearch && matchesStatus && matchesUrgency && matchesCategory;
+      return matchesSearch && matchesStatus && matchesUrgency;
     })
     .sort((a, b) => urgencyOrder[b.urgency] - urgencyOrder[a.urgency])
     .map((issue, index) => ({
@@ -144,8 +165,8 @@ const IssueManagement: React.FC = () => {
     }));
 
   const getCategoryStats = (category: string) => {
-    if (category === 'all') return issues.length;
-    return issues.filter(i => i.category === category).length;
+    if (category === 'all') return allIssues.length;
+    return allIssues.filter(i => i.category === category).length;
   };
 
   return (
