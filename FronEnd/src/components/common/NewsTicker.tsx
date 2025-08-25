@@ -1,38 +1,70 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 
-interface NewsItem {
-  id: string;
+interface ApiNewsItem {
   title: string;
-  date: string;
+  link: string;
+  pubDate: string;
+  contentSnippet: string;
 }
+
+interface NewsItem extends ApiNewsItem {}
+
+interface NewsModalProps {
+  item: NewsItem | null;
+  onClose: () => void;
+}
+
+const NewsModal: React.FC<NewsModalProps> = ({ item, onClose }) => {
+  if (!item) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full overflow-hidden">
+        <div className="p-6 border-b">
+          <h3 className="text-xl font-semibold">{item.title}</h3>
+          <p className="text-sm text-gray-500 mt-1">{new Date(item.pubDate).toLocaleString()}</p>
+        </div>
+        <div className="p-6">
+          <p className="text-gray-700">{item.contentSnippet}</p>
+        </div>
+        <div className="p-6 border-t bg-gray-50 flex justify-end gap-2">
+          <button
+            className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-100 shadow-sm"
+            onClick={onClose}
+          >
+            Close
+          </button>
+          <a
+            href={item.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-municipal-blue text-white rounded-md hover:bg-municipal-blue-dark"
+          >
+            Read Full Article
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const NewsTicker: React.FC = () => {
   const { t } = useTranslation();
-  const [newsItems] = useState<NewsItem[]>([
-    {
-      id: '1',
-      title: 'New Digital Tax Payment System Now Available for All Citizens',
-      date: '2024-06-22'
-    },
-    {
-      id: '2', 
-      title: 'Public Notice: Road Construction Project in Ward 5 Starting Next Week',
-      date: '2024-06-21'
-    },
-    {
-      id: '3',
-      title: 'Municipal Office Hours Extended During Festival Season',
-      date: '2024-06-20'
-    },
-    {
-      id: '4',
-      title: 'AI-Powered Civic Issue Reporting System Successfully Launched',
-      date: '2024-06-19'
-    }
-  ]);
+  const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<NewsItem | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch('/api/news')
+      .then(res => res.json())
+      .then((data: ApiNewsItem[]) => {
+        if (!Array.isArray(data)) return;
+        if (isMounted) setNewsItems(data);
+      })
+      .catch(() => {})
+    return () => { isMounted = false };
+  }, []);
 
   return (
     <div className="bg-municipal-green text-white py-2 overflow-hidden">
@@ -44,13 +76,13 @@ const NewsTicker: React.FC = () => {
           <div className="flex-1 overflow-hidden">
             <div className="animate-ticker whitespace-nowrap">
               {newsItems.map((item, index) => (
-                <span key={item.id} className="inline-block">
-                  <Link 
-                    to={`/news/${item.id}`}
+                <span key={`${item.link}-${index}`} className="inline-block">
+                  <button 
+                    onClick={() => setSelectedItem(item)}
                     className="hover:text-yellow-200 transition-colors text-sm"
                   >
                     {item.title}
-                  </Link>
+                  </button>
                   {index < newsItems.length - 1 && (
                     <span className="mx-8 text-municipal-green-dark">•</span>
                   )}
@@ -60,6 +92,7 @@ const NewsTicker: React.FC = () => {
           </div>
         </div>
       </div>
+      <NewsModal item={selectedItem} onClose={() => setSelectedItem(null)} />
     </div>
   );
 };

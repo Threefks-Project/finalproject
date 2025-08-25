@@ -87,7 +87,8 @@ const Header: React.FC = () => {
     { key: 'home', path: '/' },
     { key: 'gallery', path: '/gallery' },
     { key: 'about', path: '/about' },
-    { key: 'contact', path: '/contact' }
+    { key: 'contact', path: '/contact' },
+    { key: 'resolved_issues', path: '/resolved-issues' }
   ];
 
   const eServicesItems = [

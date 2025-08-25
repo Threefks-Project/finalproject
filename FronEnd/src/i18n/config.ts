@@ -16,6 +16,7 @@ const resources = {
       "login": "Login",
       "logout": "Logout",
       "gallery": "Gallery",
+      "resolved_issues": "Resolved Issues",
       
       // Homepage
       "welcome_title": "Welcome to Biratnagar Metropolitan City",
@@ -118,6 +119,7 @@ const resources = {
       "login": "लगइन",
       "logout": "लगआउट",
       "gallery": "ग्यालेरी",
+      "resolved_issues": "समाधान गरिएको समस्याहरू",
       
       // Homepage
       "welcome_title": "विराटनगर महानगरपालिकामा स्वागत छ",

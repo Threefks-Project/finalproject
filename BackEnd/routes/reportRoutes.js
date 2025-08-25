@@ -5,8 +5,27 @@ const fs = require('fs');
 const db = require('../db');
 const ort = require('onnxruntime-node');
 const Jimp = require('jimp');
+const Parser = require('rss-parser');
 
 const router = express.Router();
+
+// News RSS route - returns top 10 items
+router.get('/news', async (req, res) => {
+  try {
+    const parser = new Parser();
+    const feed = await parser.parseURL('https://www.onlinekhabar.com/feed');
+    const items = (feed.items || []).slice(0, 10).map((item) => ({
+      title: item.title || '',
+      link: item.link || '',
+      pubDate: item.pubDate || item.isoDate || '',
+      contentSnippet: item.contentSnippet || item.content || ''
+    }));
+    res.json(items);
+  } catch (error) {
+    console.error('RSS fetch error:', error);
+    res.status(500).json({ message: 'Failed to fetch news feed' });
+  }
+});
 
 // Reverse geocoding function using OpenStreetMap Nominatim API
 async function reverseGeocode(latitude, longitude) {
@@ -600,10 +619,11 @@ router.post('/submit-report', upload.single('image'), async (req, res) => {
   }
 });
 
-// GET /api/reports?category=garbage|pothole|others
+// GET /api/reports?category=garbage|pothole|others&status=pending|verified|resolved|rejected
 router.get('/reports', (req, res) => {
   const allowedCategories = ['pothole', 'garbage', 'others'];
-  const { category } = req.query;
+  const allowedStatus = ['pending', 'verified', 'resolved', 'rejected'];
+  const { category, status } = req.query;
 
   // Helper to map DB rows to frontend format
   const mapRow = (row, category) => ({
@@ -628,8 +648,10 @@ router.get('/reports', (req, res) => {
   const fetchCategory = (cat) => {
     return new Promise((resolve, reject) => {
       const table = `${cat}_reports`;
+      const whereClause = (status && allowedStatus.includes(status)) ? 'WHERE status = ?' : '';
+      const params = (status && allowedStatus.includes(status)) ? [status] : [];
       // Sort by urgency_score in descending order
-      db.query(`SELECT * FROM \`${table}\` ORDER BY urgency_score DESC`, (err, results) => {
+      db.query(`SELECT * FROM \`${table}\` ${whereClause} ORDER BY urgency_score DESC`, params, (err, results) => {
         if (err) return reject(err);
         resolve(results.map(row => mapRow(row, cat)));
       });
@@ -690,12 +712,40 @@ router.delete('/reports/:category/:id', (req, res) => {
     return res.status(400).json({ error: 'Invalid category' });
   }
   const table = `${category}_reports`;
-  db.query(`DELETE FROM \`${table}\` WHERE id = ?`, [id], (err, result) => {
-    if (err) {
-      console.error('🔥 DB delete error:', err);
-      return res.status(500).json({ error: err.message });
+  // First fetch the record to get image path
+  db.query(`SELECT image_url FROM \`${table}\` WHERE id = ?`, [id], (fetchErr, rows) => {
+    if (fetchErr) {
+      console.error('🔥 DB fetch before delete error:', fetchErr);
+      return res.status(500).json({ error: fetchErr.message });
     }
-    res.json({ success: true });
+    const imageUrl = rows && rows[0] && rows[0].image_url ? rows[0].image_url : null;
+
+    db.query(`DELETE FROM \`${table}\` WHERE id = ?`, [id], (err, result) => {
+      if (err) {
+        console.error('🔥 DB delete error:', err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      // Attempt to delete associated image file if exists
+      if (imageUrl) {
+        try {
+          // imageUrl is stored like '/uploads/garbage/filename.jpg' or 'uploads/garbage/filename.jpg'
+          const relativePath = imageUrl.startsWith('/') ? imageUrl.slice(1) : imageUrl;
+          const filePath = path.join(__dirname, '..', relativePath);
+          if (fs.existsSync(filePath)) {
+            fs.unlink(filePath, (unlinkErr) => {
+              if (unlinkErr) {
+                console.warn('⚠️ Failed to delete image file:', filePath, unlinkErr.message);
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('⚠️ File deletion error:', e);
+        }
+      }
+
+      res.json({ success: true });
+    });
   });
 });
 

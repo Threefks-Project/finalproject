@@ -3,9 +3,10 @@
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "jimp": "^0.16.1",
+    "jimp": "^1.6.0",
     "multer": "^2.0.1",
     "mysql": "^2.18.1",
-    "onnxruntime-node": "^1.22.0-rev"
+    "onnxruntime-node": "^1.22.0-rev",
+    "rss-parser": "^3.13.0"
   }
 }

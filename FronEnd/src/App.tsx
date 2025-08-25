@@ -23,6 +23,7 @@ import About from "./pages/About";
 import Services from "./pages/Services";
 import Contact from "./pages/Contact";
 import AdminGlobalAccess from "./components/admin/AdminGlobalAccess";
+import ResolvedIssues from "./pages/ResolvedIssues";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
                       <Route path="/news" element={<News />} />
                       <Route path="/news/:id" element={<News />} />
                       <Route path="/gallery" element={<Gallery />} />
+                      <Route path="/resolved-issues" element={<ResolvedIssues />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Layout>
