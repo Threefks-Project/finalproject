@@ -10,7 +10,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -40,39 +40,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check for admin credentials
-    if (email === 'admin' && password === 'admin123') {
-      const adminUser: User = { 
-        id: '1', 
-        name: 'System Administrator', 
-        email: 'admin@municipality.gov', 
-        role: 'admin' 
-      };
-      
-      setUser(adminUser);
-      localStorage.setItem('auth_token', 'admin_token');
-      localStorage.setItem('user_data', JSON.stringify(adminUser));
+    try {
+      const { getApiUrl } = await import('@/config/api');
+      const response = await fetch(getApiUrl('/login'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || 'Invalid credentials');
+      }
+      const loggedInUser: User = data.user;
+      setUser(loggedInUser);
+      localStorage.setItem('auth_token', 'session');
+      localStorage.setItem('user_data', JSON.stringify(loggedInUser));
+    } finally {
       setIsLoading(false);
-      return;
     }
-    
-    // Mock user data for regular users
-    const mockUser: User = { 
-      id: '2', 
-      name: 'Citizen User', 
-      email, 
-      role: 'citizen' 
-    };
-    
-    setUser(mockUser);
-    localStorage.setItem('auth_token', 'user_token');
-    localStorage.setItem('user_data', JSON.stringify(mockUser));
-    setIsLoading(false);
   };
 
   const logout = () => {

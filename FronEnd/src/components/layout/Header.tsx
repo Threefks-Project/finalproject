@@ -54,34 +54,28 @@ const Header: React.FC = () => {
     };
   }, [isMenuOpen]);
 
-  // useEffect(() => {
-  //   const handleKeyPress = (e: KeyboardEvent) => {
-  //     // Alt + Shift + A for admin access
-  //     if (e.altKey && e.shiftKey && e.key === 'A') {
-  //       e.preventDefault();
-  //       // Only show admin login if user is not already an admin
-  //       if (!user || user.role !== 'admin') {
-  //         setShowAdminLoginModal(true);
-  //       }
-  //     }
-  //     // Escape key to close mobile menu
-  //     if (e.key === 'Escape' && isMenuOpen) {
-  //       setIsMenuOpen(false);
-  //     }
-  //   };
-
-  //   const handleCustomLoginEvent = () => {
-  //     setShowLoginModal(true);
-  //   };
-
-  //   window.addEventListener('keydown', handleKeyPress);
-  //   window.addEventListener('openLoginModal', handleCustomLoginEvent);
-
-  //   return () => {
-  //     window.removeEventListener('keydown', handleKeyPress);
-  //     window.removeEventListener('openLoginModal', handleCustomLoginEvent);
-  //   };
-  // }, [user, isMenuOpen]);
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.altKey && e.shiftKey && e.key === 'A') {
+        e.preventDefault();
+        if (!user || user.role !== 'admin') {
+          setShowAdminLoginModal(true);
+        }
+      }
+      if (e.key === 'Escape' && isMenuOpen) {
+        setIsMenuOpen(false);
+      }
+    };
+    const handleCustomLoginEvent = () => {
+      setShowLoginModal(true);
+    };
+    window.addEventListener('keydown', handleKeyPress);
+    window.addEventListener('openLoginModal', handleCustomLoginEvent as any);
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+      window.removeEventListener('openLoginModal', handleCustomLoginEvent as any);
+    };
+  }, [user, isMenuOpen]);
 
   const navigationItems = [
     { key: 'home', path: '/' },

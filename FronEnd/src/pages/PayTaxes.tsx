@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CreditCard, Download, Eye, Calendar } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,30 +19,35 @@ const PayTaxes: React.FC = () => {
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [showSignup, setShowSignup] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [loadingDues, setLoadingDues] = useState(false);
+  const [taxpayer, setTaxpayer] = useState<any | null>(null);
+  const [records, setRecords] = useState<TaxRecord[]>([]);
 
-  const taxRecords: TaxRecord[] = [
-    {
-      id: "BMC-2024-001",
-      type: "Property Tax",
-      amount: 15000,
-      dueDate: "2024-07-15",
-      status: "pending",
-    },
-    {
-      id: "BMC-2024-002",
-      type: "Business License Fee",
-      amount: 8500,
-      dueDate: "2024-06-30",
-      status: "overdue",
-    },
-    {
-      id: "BMC-2023-045",
-      type: "Property Tax",
-      amount: 14500,
-      dueDate: "2023-12-31",
-      status: "paid",
-    },
-  ];
+  useEffect(() => {
+    const fetchDues = async () => {
+      if (!user) return;
+      setLoadingDues(true);
+      try {
+        const { getApiUrl } = await import('@/config/api');
+        const resp = await fetch(getApiUrl(`/taxpayer/${user.id}`));
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data?.error || 'Failed to load taxpayer data');
+        setTaxpayer(data.user);
+        setRecords((data.dues || []).map((d: any) => ({
+          id: d.id,
+          type: d.type,
+          amount: d.amount,
+          dueDate: d.dueDate,
+          status: d.status,
+        })));
+      } catch (e: any) {
+        toast({ title: 'Error', description: e.message || 'Unable to load dues' });
+      } finally {
+        setLoadingDues(false);
+      }
+    };
+    fetchDues();
+  }, [user]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -201,7 +206,8 @@ const PayTaxes: React.FC = () => {
     if (!canGoNext) return;
 
     try {
-      const response = await fetch('/api/signup', {
+      const { getApiUrl } = await import('@/config/api');
+      const response = await fetch(getApiUrl('/signup'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -725,18 +731,18 @@ const PayTaxes: React.FC = () => {
                 <div className="grid md:grid-cols-3 gap-4 mb-6">
                   <div className="text-center p-4 bg-red-50 rounded-lg">
                     <div className="text-2xl font-bold text-red-600">
-                      NPR 23,500
+                      {loadingDues ? 'Loading...' : `NPR ${records.filter(r => r.status !== 'paid').reduce((s, r) => s + r.amount, 0).toLocaleString()}`}
                     </div>
                     <div className="text-sm text-red-800">Outstanding</div>
                   </div>
                   <div className="text-center p-4 bg-green-50 rounded-lg">
                     <div className="text-2xl font-bold text-green-600">
-                      NPR 45,200
+                      {loadingDues ? 'Loading...' : `NPR ${records.filter(r => r.status === 'paid').reduce((s, r) => s + r.amount, 0).toLocaleString()}`}
                     </div>
                     <div className="text-sm text-green-800">Paid This Year</div>
                   </div>
                   <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">3</div>
+                    <div className="text-2xl font-bold text-blue-600">{loadingDues ? '...' : records.length}</div>
                     <div className="text-sm text-blue-800">Total Records</div>
                   </div>
                 </div>
@@ -750,7 +756,11 @@ const PayTaxes: React.FC = () => {
               <h2 className="text-xl font-semibold mb-4">Tax Records</h2>
 
               <div className="space-y-4">
-                {taxRecords.map((tax) => (
+                {loadingDues && <div className="text-gray-500 text-sm">Loading dues...</div>}
+                {!loadingDues && records.length === 0 && (
+                  <div className="text-gray-500 text-sm">No tax records found.</div>
+                )}
+                {records.map((tax) => (
                   <div
                     key={tax.id}
                     className="border border-gray-200 rounded-lg p-4"

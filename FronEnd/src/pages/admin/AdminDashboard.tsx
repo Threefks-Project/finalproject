@@ -1,32 +1,17 @@
-
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell
 } from 'recharts';
-import { 
-  Users, 
-  FileText, 
-  MessageSquare, 
-  CreditCard,
-  TrendingUp,
-  AlertTriangle
+import {
+  Users, FileText, MessageSquare, CreditCard
 } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
 
-  // Check if user is admin or engineer
   if (!user || (user.role !== 'admin' && user.role !== 'engineer')) {
     return <Navigate to="/" replace />;
   }
@@ -89,14 +74,22 @@ const AdminDashboard: React.FC = () => {
     },
     {
       id: 'BMC-2024-002',
-      category: 'Water Supply',
-      location: 'Colony Area, Ward 3',
+      category: 'Garbage',
+      location: 'Bus Park, Ward 4',
       urgency: 'medium',
       status: 'pending',
-      reportedBy: 'Jane Smith'
+      reportedBy: 'Sita Thapa'
     },
     {
       id: 'BMC-2024-003',
+      category: 'Pothole',
+      location: 'Ring Road, Ward 1',
+      urgency: 'high',
+      status: 'resolved',
+      reportedBy: 'Gopal Lama'
+    },
+    {
+      id: 'BMC-2024-004',
       category: 'Public Lighting',
       location: 'School Street, Ward 7',
       urgency: 'low',
@@ -104,6 +97,10 @@ const AdminDashboard: React.FC = () => {
       reportedBy: 'Ram Prasad'
     }
   ];
+
+  const filteredIssues = recentIssues.filter(issue =>
+    issue.category.toLowerCase() === 'garbage' || issue.category.toLowerCase() === 'pothole'
+  );
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
@@ -152,8 +149,8 @@ const AdminDashboard: React.FC = () => {
         ))}
       </div>
 
+      {/* Charts Section */}
       <div className="grid lg:grid-cols-2 gap-8 mb-8">
-        {/* Issue Categories Chart */}
         <div className="municipal-card p-6">
           <h3 className="text-lg font-semibold mb-4">Issues by Category</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -166,8 +163,6 @@ const AdminDashboard: React.FC = () => {
             </BarChart>
           </ResponsiveContainer>
         </div>
-
-        {/* Tax Collection Breakdown */}
         <div className="municipal-card p-6">
           <h3 className="text-lg font-semibold mb-4">Tax Collection Breakdown</h3>
           <ResponsiveContainer width="100%" height={300}>
@@ -191,7 +186,28 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Recent Issues */}
+      {/* Garbage & Pothole Issues Grid */}
+      <div className="municipal-card p-6 mb-8">
+        <h3 className="text-lg font-semibold mb-4">Garbage & Pothole Issues</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredIssues.map((issue) => (
+            <div key={issue.id} className="border rounded-lg p-4 bg-white shadow hover:shadow-md transition">
+              <p className="text-sm font-semibold text-gray-700 mb-1">{issue.category}</p>
+              <p className="text-xs text-gray-500 mb-1">{issue.location}</p>
+              <p className={`text-xs inline-block px-2 py-1 rounded-full font-medium ${getUrgencyColor(issue.urgency)} mb-1`}>
+                {issue.urgency.charAt(0).toUpperCase() + issue.urgency.slice(1)}
+              </p>
+              <p className={`text-xs inline-block px-2 py-1 rounded-full font-medium ${getStatusColor(issue.status)} mb-2`}>
+                {issue.status.charAt(0).toUpperCase() + issue.status.slice(1)}
+              </p>
+              <p className="text-xs text-gray-600">Reported by: {issue.reportedBy}</p>
+              <button className="text-municipal-blue mt-2 text-sm hover:underline">View Details</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Issues Table */}
       <div className="municipal-card p-6">
         <h3 className="text-lg font-semibold mb-4">Recent Issues</h3>
         <div className="overflow-x-auto">
@@ -225,9 +241,7 @@ const AdminDashboard: React.FC = () => {
                   </td>
                   <td className="py-3 px-4">{issue.reportedBy}</td>
                   <td className="py-3 px-4">
-                    <button className="text-municipal-blue hover:underline text-sm">
-                      View Details
-                    </button>
+                    <button className="text-municipal-blue hover:underline text-sm">View Details</button>
                   </td>
                 </tr>
               ))}

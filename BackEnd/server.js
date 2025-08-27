@@ -4,9 +4,11 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const reportRoutes = require('./routes/reportRoutes');
 const signupRoutes = require('./routes/signupRoutes');
+const authRoutes = require('./routes/authRoutes');
+const taxpayerRoutes = require('./routes/taxpayerRoutes');
 const app = express();
 
-app.use(cors({ origin: 'http://localhost:8080' }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -15,6 +17,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api', reportRoutes);
 app.use('/api', signupRoutes);
+app.use('/api', authRoutes);
+app.use('/api', taxpayerRoutes);
 
 const PORT = 3000;
 app.listen(PORT, () => {
