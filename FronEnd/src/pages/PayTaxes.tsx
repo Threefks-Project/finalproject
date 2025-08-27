@@ -285,7 +285,14 @@ const PayTaxes: React.FC = () => {
                       autoFocus={focusedField === "phone"}
                       className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue"
                     />
+                    {form.phone.length !== 10 && (
+                    <p className="text-red-500 text-sm">
+                      Phone number must be 10 digits
+                    </p>
+                  )}
                   </div>
+                  
+
                   <div>
                     <label className="block text-sm text-gray-700 mb-1">
                       Email
@@ -363,6 +370,7 @@ const PayTaxes: React.FC = () => {
                           autoFocus={focusedField === "building_area_sqft"}
                           className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue"
                         />
+                        
                       </div>
                       <div>
                         <label className="block text-sm text-gray-700 mb-1">
@@ -437,6 +445,11 @@ const PayTaxes: React.FC = () => {
                           autoFocus={focusedField === "pan_no"}
                           className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue"
                         />
+                        {form.pan_no.length !== 10 && (
+                          <p className="text-red-500 text-sm">
+                            PAN number should be of 10 digits
+                          </p>
+                        )}
                       </div>
                     </>
                   ) : (
