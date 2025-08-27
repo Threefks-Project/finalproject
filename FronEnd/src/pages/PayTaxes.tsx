@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CreditCard, Download, Eye, Calendar } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +18,8 @@ const PayTaxes: React.FC = () => {
   const { user } = useAuth();
   const [selectedTax, setSelectedTax] = useState<TaxRecord | null>(null);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const taxRecords: TaxRecord[] = [
     {
@@ -105,11 +107,231 @@ const PayTaxes: React.FC = () => {
             >
               {t('login')}
             </button>
+            <button
+              onClick={() => {
+                setShowLoginPrompt(false);
+                setShowSignup(true);
+              }}
+              className="flex-1 px-4 py-2 bg-white text-municipal-blue border border-municipal-blue rounded-md hover:bg-municipal-blue/10 transition-colors"
+            >
+              Sign Up
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
+
+  type TaxType = 'property' | 'business';
+  const [step, setStep] = useState<1 | 2>(1);
+  const [form, setForm] = useState<any>({
+    name: '', ward: '', phone: '', email: '',
+    taxType: 'property',
+    land_area_sqft: '', kitta_no: '', building_area_sqft: '', use: 'residential', location_type: 'prime',
+    category: 'small', pan_no: '',
+    username: '', password: '', confirmPassword: ''
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setForm((prev: any) => ({ ...prev, [name]: value }));
+  };
+
+  const canGoNext = useMemo(() => {
+    if (step === 1) {
+      if (!form.name || !form.ward || !form.phone || !form.email || !form.taxType) return false;
+      if (form.taxType === 'property') {
+        return form.land_area_sqft && form.kitta_no && form.building_area_sqft && form.use && form.location_type;
+      }
+      if (form.taxType === 'business') {
+        return !!form.category && !!form.pan_no;
+      }
+      // both
+      return (
+        form.land_area_sqft && form.kitta_no && form.building_area_sqft && form.use && form.location_type && form.category && form.pan_no
+      );
+    }
+    if (step === 2) {
+      return form.username && form.password && form.confirmPassword && form.password === form.confirmPassword;
+    }
+    return false;
+  }, [step, form]);
+
+  const SignupModal = () => {
+    const taxType = (form.taxType as TaxType) || 'property';
+    return (
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg w-full max-w-2xl h-[90vh] max-h-[90vh] flex flex-col" role="dialog" aria-modal="true">
+          <form onSubmit={(e) => { e.preventDefault(); }} className="flex flex-col h-full">
+            <div className="p-6 border-b flex-shrink-0">
+              <h2 className="text-xl font-semibold">Create Account</h2>
+              <p className="text-sm text-gray-500">Register to continue with tax services</p>
+            </div>
+            <div className="p-6 flex-1 min-h-0 overflow-y-auto">
+              {step === 1 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Name</label>
+                    <input type="text" autoComplete="name" name="name" value={form.name} onChange={handleChange} onFocus={() => setFocusedField('name')} autoFocus={focusedField === 'name'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Ward</label>
+                    <input type="text" name="ward" value={form.ward} onChange={handleChange} onFocus={() => setFocusedField('ward')} autoFocus={focusedField === 'ward'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Phone No</label>
+                    <input type="tel" autoComplete="tel" name="phone" value={form.phone} onChange={handleChange} onFocus={() => setFocusedField('phone')} autoFocus={focusedField === 'phone'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Email</label>
+                    <input name="email" value={form.email} onChange={handleChange} type="email" autoComplete="email" onFocus={() => setFocusedField('email')} autoFocus={focusedField === 'email'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm text-gray-700 mb-1">Tax Type</label>
+                    <select name="taxType" value={form.taxType} onChange={handleChange} onFocus={() => setFocusedField('taxType')} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue">
+                      <option value="property">Property Tax</option>
+                      <option value="business">Business Tax</option>
+                      <option value="both">Both</option>
+                    </select>
+                  </div>
+
+                  {taxType === 'property' ? (
+                    <>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Land Area (sqft)</label>
+                        <input type="number" inputMode="decimal" name="land_area_sqft" value={form.land_area_sqft} onChange={handleChange} onFocus={() => setFocusedField('land_area_sqft')} autoFocus={focusedField === 'land_area_sqft'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Kitta No</label>
+                        <input type="text" name="kitta_no" value={form.kitta_no} onChange={handleChange} onFocus={() => setFocusedField('kitta_no')} autoFocus={focusedField === 'kitta_no'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Building Area (sqft)</label>
+                        <input type="number" inputMode="decimal" name="building_area_sqft" value={form.building_area_sqft} onChange={handleChange} onFocus={() => setFocusedField('building_area_sqft')} autoFocus={focusedField === 'building_area_sqft'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Use</label>
+                        <select name="use" value={form.use} onChange={handleChange} onFocus={() => setFocusedField('use')} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue">
+                          <option value="residential">Residential</option>
+                          <option value="commercial">Commercial</option>
+                          <option value="industrial">Industrial</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Location Type</label>
+                        <select name="location_type" value={form.location_type} onChange={handleChange} onFocus={() => setFocusedField('location_type')} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue">
+                          <option value="prime">Prime Area</option>
+                          <option value="normal">Normal</option>
+                          <option value="remote">Remote</option>
+                        </select>
+                      </div>
+                    </>
+                  ) : taxType === 'business' ? (
+                    <>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm text-gray-700 mb-1">Business Category</label>
+                        <select name="category" value={form.category} onChange={handleChange} onFocus={() => setFocusedField('category')} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue">
+                          <option value="small">Small (Rs. 0 - 1,000,000)</option>
+                          <option value="medium">Medium (Rs. 1,000,000 - 5,000,000)</option>
+                          <option value="large">Large (Rs. 5,000,000 - 20,000,000)</option>
+                          <option value="big industry">Big Industry (&gt; 20,000,000)</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm text-gray-700 mb-1">PAN No</label>
+                        <input type="text" name="pan_no" value={form.pan_no} onChange={handleChange} onFocus={() => setFocusedField('pan_no')} autoFocus={focusedField === 'pan_no'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="md:col-span-2">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2">Property Details</h4>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Land Area (sqft)</label>
+                        <input type="number" inputMode="decimal" name="land_area_sqft" value={form.land_area_sqft} onChange={handleChange} onFocus={() => setFocusedField('land_area_sqft')} autoFocus={focusedField === 'land_area_sqft'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Kitta No</label>
+                        <input type="text" name="kitta_no" value={form.kitta_no} onChange={handleChange} onFocus={() => setFocusedField('kitta_no')} autoFocus={focusedField === 'kitta_no'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Building Area (sqft)</label>
+                        <input type="number" inputMode="decimal" name="building_area_sqft" value={form.building_area_sqft} onChange={handleChange} onFocus={() => setFocusedField('building_area_sqft')} autoFocus={focusedField === 'building_area_sqft'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Use</label>
+                        <select name="use" value={form.use} onChange={handleChange} onFocus={() => setFocusedField('use')} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue">
+                          <option value="residential">Residential</option>
+                          <option value="commercial">Commercial</option>
+                          <option value="industrial">Industrial</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-1">Location Type</label>
+                        <select name="location_type" value={form.location_type} onChange={handleChange} onFocus={() => setFocusedField('location_type')} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue">
+                          <option value="prime">Prime Area</option>
+                          <option value="normal">Normal</option>
+                          <option value="remote">Remote</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-2 pt-2">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2">Business Details</h4>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm text-gray-700 mb-1">Business Category</label>
+                        <select name="category" value={form.category} onChange={handleChange} onFocus={() => setFocusedField('category')} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue">
+                          <option value="small">Small (Rs. 0 - 1,000,000)</option>
+                          <option value="medium">Medium (Rs. 1,000,000 - 5,000,000)</option>
+                          <option value="large">Large (Rs. 5,000,000 - 20,000,000)</option>
+                          <option value="big industry">Big Industry (&gt; 20,000,000)</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm text-gray-700 mb-1">PAN No</label>
+                        <input type="text" name="pan_no" value={form.pan_no} onChange={handleChange} onFocus={() => setFocusedField('pan_no')} autoFocus={focusedField === 'pan_no'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {step === 2 && (
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Choose Username</label>
+                    <input type="text" autoComplete="username" name="username" value={form.username} onChange={handleChange} onFocus={() => setFocusedField('username')} autoFocus={focusedField === 'username'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Password</label>
+                    <input type="password" autoComplete="new-password" name="password" value={form.password} onChange={handleChange} onFocus={() => setFocusedField('password')} autoFocus={focusedField === 'password'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-700 mb-1">Confirm Password</label>
+                    <input type="password" autoComplete="new-password" name="confirmPassword" value={form.confirmPassword} onChange={handleChange} onFocus={() => setFocusedField('confirmPassword')} autoFocus={focusedField === 'confirmPassword'} className="w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-municipal-blue" />
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t bg-gray-50 flex justify-between flex-shrink-0">
+              <button type="button" className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-100" onClick={() => setShowSignup(false)}>Cancel</button>
+              <div className="flex gap-2">
+                {step === 2 && (
+                  <button type="button" className="px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200" onClick={() => setStep(1)}>Back</button>
+                )}
+                {step === 1 && (
+                  <button type="button" disabled={!canGoNext} className={`px-4 py-2 rounded-md ${canGoNext ? 'bg-municipal-blue text-white hover:bg-municipal-blue-dark' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`} onClick={() => setStep(2)}>Continue</button>
+                )}
+                {step === 2 && (
+                  <button type="submit" disabled={!canGoNext} className={`px-4 py-2 rounded-md ${canGoNext ? 'bg-municipal-blue text-white hover:bg-municipal-blue-dark' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`} onClick={() => { if (!canGoNext) return; setShowSignup(false); toast({ title: 'Account created', description: 'You can now sign in.' }); }}>Create Account</button>
+                )}
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -129,12 +351,20 @@ const PayTaxes: React.FC = () => {
                 <p className="text-gray-600 mb-4">
                   Login to view your tax records and make payments
                 </p>
-                <button
-                  onClick={() => setShowLoginPrompt(true)}
-                  className="municipal-button"
-                >
-                  Login to Continue
-                </button>
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={() => setShowLoginPrompt(true)}
+                    className="municipal-button"
+                  >
+                    Login to Continue
+                  </button>
+                  <button
+                    onClick={() => setShowSignup(true)}
+                    className="px-4 py-2 bg-white text-municipal-blue border border-municipal-blue rounded-md hover:bg-municipal-blue/10 transition-colors"
+                  >
+                    Sign Up
+                  </button>
+                </div>
               </div>
             ) : (
               <>
@@ -257,6 +487,7 @@ const PayTaxes: React.FC = () => {
       </div>
 
       {showLoginPrompt && <LoginPrompt />}
+      {showSignup && <SignupModal />}
     </div>
   );
 };

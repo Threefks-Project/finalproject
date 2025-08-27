@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MapPin } from 'lucide-react';
+import { getImageUrl } from '@/config/api';
 
 interface Issue {
   id: string;
@@ -17,18 +18,6 @@ const ResolvedIssues: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Issue | null>(null);
-
-  const backendBase = useMemo(() => {
-    const { protocol, hostname } = window.location;
-    return `${protocol}//${hostname}:3000`;
-  }, []);
-
-  const buildImageUrl = (path: string) => {
-    if (!path) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    const normalized = path.startsWith('/') ? path : `/${path}`;
-    return `${backendBase}${normalized}`;
-  };
 
   useEffect(() => {
     let mounted = true;
@@ -75,7 +64,7 @@ const ResolvedIssues: React.FC = () => {
               {/* Image */}
               <div className="h-56 overflow-hidden">
                 <img
-                  src={buildImageUrl(issue.images![0])}
+                  src={getImageUrl(issue.images![0])}
                   alt={issue.title}
                   className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                 />
@@ -109,7 +98,7 @@ const ResolvedIssues: React.FC = () => {
           <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="h-72 bg-gray-100 overflow-hidden">
               {selected.images && selected.images[0] && (
-                <img src={buildImageUrl(selected.images[0])} alt={selected.title} className="w-full h-full object-cover" />
+                <img src={getImageUrl(selected.images[0])} alt={selected.title} className="w-full h-full object-cover" />
               )}
             </div>
             <div className="p-6">

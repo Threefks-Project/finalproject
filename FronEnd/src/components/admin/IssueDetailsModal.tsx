@@ -1,6 +1,7 @@
 
 import React from 'react';
-import { X, MapPin, User, Calendar, Camera } from 'lucide-react';
+import { X, Camera, MapPin, Clock, User, AlertTriangle } from 'lucide-react';
+import { getImageUrl } from '@/config/api';
 
 interface Issue {
   id: string;
@@ -161,7 +162,7 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
             <div className="municipal-card p-6">
               <label className="block text-sm font-medium text-gray-700 mb-3">Reported At</label>
               <div className="flex items-center gap-3">
-                <Calendar className="h-5 w-5 text-municipal-blue" />
+                <Clock className="h-5 w-5 text-municipal-blue" />
                 <p className="text-gray-600 text-lg">{issue.reportedAt}</p>
               </div>
             </div>
@@ -218,8 +219,7 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-4">Attached Images</label>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {issue.images.map((image, index) => {
-                  const isAbsolute = image.startsWith('http://') || image.startsWith('https://');
-                  const imageUrl = isAbsolute ? image : `http://localhost:3000/${image.replace(/^\/+/, '')}`;
+                  const imageUrl = getImageUrl(image);
                   return (
                     <div key={index} className="relative group">
                       <img
@@ -260,7 +260,7 @@ const IssueDetailsModal: React.FC<IssueDetailsModalProps> = ({
               onClick={handleDelete}
               className="flex items-center gap-2 px-6 py-2 text-sm bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors font-medium"
             >
-              <X className="h-4 w-4" />
+              <AlertTriangle className="h-4 w-4" />
               Delete Issue
             </button>
           </div>
