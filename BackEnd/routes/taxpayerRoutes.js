@@ -111,6 +111,113 @@ router.get('/taxpayer/:userId', (req, res) => {
   });
 });
 
+// POST /api/taxpayer/:userId/property - add or update property profile
+router.post('/taxpayer/:userId/property', (req, res) => {
+  const { userId } = req.params;
+  const { land_area_sqft, kitta_no, building_area_sqft, uses, location_type } = req.body || {};
+  if (!uses || !location_type) {
+    return res.status(400).json({ error: 'uses and location_type are required' });
+  }
+  // Ensure there is a tax_profile for property/both
+  const getProfileSql = 'SELECT id, tax_type FROM tax_profiles WHERE user_id = ? LIMIT 1';
+  db.query(getProfileSql, [userId], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Internal server error' });
+    const ensureProfile = (cb) => {
+      if (!rows || rows.length === 0) {
+        db.query('INSERT INTO tax_profiles (user_id, tax_type, created_at) VALUES (?, ?, NOW())', [userId, 'property'], (iErr, result) => {
+          if (iErr) return cb(iErr);
+          cb(null, { id: result.insertId, tax_type: 'property' });
+        });
+      } else {
+        const profile = rows[0];
+        if (profile.tax_type === 'business') {
+          // upgrade to both
+          db.query('UPDATE tax_profiles SET tax_type = ? WHERE id = ?', ['both', profile.id], (uErr) => {
+            if (uErr) return cb(uErr);
+            cb(null, { id: profile.id, tax_type: 'both' });
+          });
+        } else {
+          cb(null, profile);
+        }
+      }
+    };
+    ensureProfile((pErr, profile) => {
+      if (pErr) return res.status(500).json({ error: 'Internal server error' });
+      // Upsert property_profiles
+      db.query('SELECT id FROM property_profiles WHERE tax_profile_id = ? LIMIT 1', [profile.id], (sErr, pRows) => {
+        if (sErr) return res.status(500).json({ error: 'Internal server error' });
+        if (pRows && pRows.length > 0) {
+          db.query(
+            'UPDATE property_profiles SET land_area_sqft = ?, kitta_no = ?, building_area_sqft = ?, uses = ?, location_type = ? WHERE id = ?',
+            [land_area_sqft || 0, kitta_no || '', building_area_sqft || 0, uses, location_type, pRows[0].id],
+            (uErr) => {
+              if (uErr) return res.status(500).json({ error: 'Internal server error' });
+              res.json({ success: true, tax_profile_id: profile.id });
+            }
+          );
+        } else {
+          db.query(
+            'INSERT INTO property_profiles (tax_profile_id, land_area_sqft, kitta_no, building_area_sqft, uses, location_type) VALUES (?, ?, ?, ?, ?, ?)',
+            [profile.id, land_area_sqft || 0, kitta_no || '', building_area_sqft || 0, uses, location_type],
+            (i2Err) => {
+              if (i2Err) return res.status(500).json({ error: 'Internal server error' });
+              res.json({ success: true, tax_profile_id: profile.id });
+            }
+          );
+        }
+      });
+    });
+  });
+});
+
+// POST /api/taxpayer/:userId/business - add or update business profile
+router.post('/taxpayer/:userId/business', (req, res) => {
+  const { userId } = req.params;
+  const { category, pan_no } = req.body || {};
+  if (!category || !pan_no) {
+    return res.status(400).json({ error: 'category and pan_no are required' });
+  }
+  const getProfileSql = 'SELECT id, tax_type FROM tax_profiles WHERE user_id = ? LIMIT 1';
+  db.query(getProfileSql, [userId], (err, rows) => {
+    if (err) return res.status(500).json({ error: 'Internal server error' });
+    const ensureProfile = (cb) => {
+      if (!rows || rows.length === 0) {
+        db.query('INSERT INTO tax_profiles (user_id, tax_type, created_at) VALUES (?, ?, NOW())', [userId, 'business'], (iErr, result) => {
+          if (iErr) return cb(iErr);
+          cb(null, { id: result.insertId, tax_type: 'business' });
+        });
+      } else {
+        const profile = rows[0];
+        if (profile.tax_type === 'property') {
+          db.query('UPDATE tax_profiles SET tax_type = ? WHERE id = ?', ['both', profile.id], (uErr) => {
+            if (uErr) return cb(uErr);
+            cb(null, { id: profile.id, tax_type: 'both' });
+          });
+        } else {
+          cb(null, profile);
+        }
+      }
+    };
+    ensureProfile((pErr, profile) => {
+      if (pErr) return res.status(500).json({ error: 'Internal server error' });
+      db.query('SELECT id FROM business_profiles WHERE tax_profile_id = ? LIMIT 1', [profile.id], (sErr, bRows) => {
+        if (sErr) return res.status(500).json({ error: 'Internal server error' });
+        if (bRows && bRows.length > 0) {
+          db.query('UPDATE business_profiles SET category = ?, pan_no = ? WHERE id = ?', [category, pan_no, bRows[0].id], (uErr) => {
+            if (uErr) return res.status(500).json({ error: 'Internal server error' });
+            res.json({ success: true, tax_profile_id: profile.id });
+          });
+        } else {
+          db.query('INSERT INTO business_profiles (tax_profile_id, category, pan_no) VALUES (?, ?, ?)', [profile.id, category, pan_no], (i2Err) => {
+            if (i2Err) return res.status(500).json({ error: 'Internal server error' });
+            res.json({ success: true, tax_profile_id: profile.id });
+          });
+        }
+      });
+    });
+  });
+});
+
 module.exports = router;
 
 

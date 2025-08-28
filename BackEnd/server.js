@@ -6,6 +6,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const signupRoutes = require('./routes/signupRoutes');
 const authRoutes = require('./routes/authRoutes');
 const taxpayerRoutes = require('./routes/taxpayerRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 const app = express();
 
 app.use(cors({ origin: true, credentials: true }));
@@ -19,6 +20,7 @@ app.use('/api', reportRoutes);
 app.use('/api', signupRoutes);
 app.use('/api', authRoutes);
 app.use('/api', taxpayerRoutes);
+app.use('/api', paymentRoutes);
 
 const PORT = 3000;
 app.listen(PORT, () => {

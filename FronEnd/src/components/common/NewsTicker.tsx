@@ -56,13 +56,15 @@ const NewsTicker: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true;
-    fetch('/api/news')
-      .then(res => res.json())
-      .then((data: ApiNewsItem[]) => {
+    (async () => {
+      try {
+        const { getApiUrl } = await import('@/config/api');
+        const res = await fetch(getApiUrl('/news'));
+        const data = await res.json();
         if (!Array.isArray(data)) return;
         if (isMounted) setNewsItems(data);
-      })
-      .catch(() => {})
+      } catch {}
+    })();
     return () => { isMounted = false };
   }, []);
 

@@ -22,6 +22,19 @@ const PayTaxes: React.FC = () => {
   const [loadingDues, setLoadingDues] = useState(false);
   const [taxpayer, setTaxpayer] = useState<any | null>(null);
   const [records, setRecords] = useState<TaxRecord[]>([]);
+  const [showPropertyModal, setShowPropertyModal] = useState(false);
+  const [showBusinessModal, setShowBusinessModal] = useState(false);
+  const [propertyForm, setPropertyForm] = useState({
+    land_area_sqft: '',
+    kitta_no: '',
+    building_area_sqft: '',
+    uses: 'Residential',
+    location_type: 'Urban',
+  });
+  const [businessForm, setBusinessForm] = useState({
+    category: 'small',
+    pan_no: '',
+  });
 
   useEffect(() => {
     const fetchDues = async () => {
@@ -49,6 +62,61 @@ const PayTaxes: React.FC = () => {
     fetchDues();
   }, [user]);
 
+  const submitProperty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      const { getApiUrl } = await import('@/config/api');
+      const resp = await fetch(getApiUrl(`/taxpayer/${user.id}/property`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          land_area_sqft: Number(propertyForm.land_area_sqft) || 0,
+          kitta_no: propertyForm.kitta_no,
+          building_area_sqft: Number(propertyForm.building_area_sqft) || 0,
+          uses: propertyForm.uses,
+          location_type: propertyForm.location_type,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data?.success) throw new Error(data?.error || 'Failed to save property');
+      toast({ title: 'Saved', description: 'Property profile updated' });
+      setShowPropertyModal(false);
+      // refresh dues
+      const refresh = await fetch(getApiUrl(`/taxpayer/${user.id}`));
+      const refData = await refresh.json();
+      if (refresh.ok) {
+        setRecords((refData.dues || []).map((d: any) => ({ id: d.id, type: d.type, amount: d.amount, dueDate: d.dueDate, status: d.status })));
+      }
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to save' });
+    }
+  };
+
+  const submitBusiness = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      const { getApiUrl } = await import('@/config/api');
+      const resp = await fetch(getApiUrl(`/taxpayer/${user.id}/business`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(businessForm),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data?.success) throw new Error(data?.error || 'Failed to save business');
+      toast({ title: 'Saved', description: 'Business profile updated' });
+      setShowBusinessModal(false);
+      const refresh = await fetch(getApiUrl(`/taxpayer/${user.id}`));
+      const refData = await refresh.json();
+      if (refresh.ok) {
+        setRecords((refData.dues || []).map((d: any) => ({ id: d.id, type: d.type, amount: d.amount, dueDate: d.dueDate, status: d.status })));
+      }
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to save' });
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "paid":
@@ -62,17 +130,45 @@ const PayTaxes: React.FC = () => {
     }
   };
 
-  const handlePayment = (tax: TaxRecord) => {
+  const handlePayment = async (tax: TaxRecord) => {
     if (!user) {
       setShowLoginPrompt(true);
       return;
     }
+    try {
+      const { getApiUrl } = await import('@/config/api');
+      // Find the matching pending record id by amount and due date from last fetch
+      // In real app, backend would give record id; here we attempt a best-effort
+      const resp = await fetch(getApiUrl(`/taxpayer/${user.id}`));
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.error || 'Failed to load payable');
+      const match = (data.dues || []).find((d: any) => d.amount === tax.amount && d.status !== 'paid');
+      if (!match) throw new Error('No payable record found');
 
-    // Simulate payment process
-    toast({
-      title: "Payment initiated",
-      description: `Payment of NPR ${tax.amount} for ${tax.type} has been initiated.`,
-    });
+      const init = await fetch(getApiUrl('/pay/esewa/initiate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tax_record_id: match.id, amount: match.amount }),
+      });
+      const initData = await init.json();
+      if (!init.ok) throw new Error(initData?.error || 'Failed to initiate');
+
+      // Create and submit form to eSewa
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = initData.formAction;
+      Object.entries(initData.esewa).forEach(([k, v]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = String(k);
+        input.value = String(v);
+        form.appendChild(input);
+      });
+      document.body.appendChild(form);
+      form.submit();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Unable to initiate payment' });
+    }
   };
 
   const downloadReceipt = (tax: TaxRecord) => {
@@ -746,6 +842,10 @@ const PayTaxes: React.FC = () => {
                     <div className="text-sm text-blue-800">Total Records</div>
                   </div>
                 </div>
+                <div className="flex gap-3 mb-2">
+                  <button onClick={() => setShowPropertyModal(true)} className="px-3 py-2 border rounded-md hover:bg-gray-50">Add Property</button>
+                  <button onClick={() => setShowBusinessModal(true)} className="px-3 py-2 border rounded-md hover:bg-gray-50">Add Business</button>
+                </div>
               </>
             )}
           </div>
@@ -864,6 +964,72 @@ const PayTaxes: React.FC = () => {
 
       {showLoginPrompt && <LoginPrompt />}
       {showSignup && <SignupModal />}
+      {showPropertyModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+            <h3 className="text-lg font-semibold mb-4">Add Property</h3>
+            <form onSubmit={submitProperty} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Land Area (sqft)</label>
+                <input value={propertyForm.land_area_sqft} onChange={(e)=>setPropertyForm({...propertyForm, land_area_sqft: e.target.value})} type="number" className="w-full border rounded-md px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Kitta No</label>
+                <input value={propertyForm.kitta_no} onChange={(e)=>setPropertyForm({...propertyForm, kitta_no: e.target.value})} className="w-full border rounded-md px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Building Area (sqft)</label>
+                <input value={propertyForm.building_area_sqft} onChange={(e)=>setPropertyForm({...propertyForm, building_area_sqft: e.target.value})} type="number" className="w-full border rounded-md px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Uses</label>
+                <select value={propertyForm.uses} onChange={(e)=>setPropertyForm({...propertyForm, uses: e.target.value})} className="w-full border rounded-md px-3 py-2">
+                  <option>Residential</option>
+                  <option>Commercial</option>
+                  <option>Industrial</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm text-gray-700 mb-1">Location Type</label>
+                <select value={propertyForm.location_type} onChange={(e)=>setPropertyForm({...propertyForm, location_type: e.target.value})} className="w-full border rounded-md px-3 py-2">
+                  <option>Urban</option>
+                  <option>Rural</option>
+                </select>
+              </div>
+              <div className="md:col-span-2 flex justify-end gap-2 pt-2">
+                <button type="button" onClick={()=>setShowPropertyModal(false)} className="px-4 py-2 border rounded-md">Cancel</button>
+                <button type="submit" className="px-4 py-2 municipal-button">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {showBusinessModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Add Business</h3>
+            <form onSubmit={submitBusiness} className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">Category</label>
+                <select value={businessForm.category} onChange={(e)=>setBusinessForm({...businessForm, category: e.target.value})} className="w-full border rounded-md px-3 py-2">
+                  <option value="small">Small</option>
+                  <option value="medium">Medium</option>
+                  <option value="large">Large</option>
+                  <option value="big industry">Big Industry</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">PAN No</label>
+                <input value={businessForm.pan_no} onChange={(e)=>setBusinessForm({...businessForm, pan_no: e.target.value})} className="w-full border rounded-md px-3 py-2" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={()=>setShowBusinessModal(false)} className="px-4 py-2 border rounded-md">Cancel</button>
+                <button type="submit" className="px-4 py-2 municipal-button">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

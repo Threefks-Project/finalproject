@@ -9,10 +9,15 @@ const Parser = require('rss-parser');
 
 const router = express.Router();
 
-// News RSS route - returns top 10 items
+// News RSS route - returns top 10 items, resilient on failures
 router.get('/news', async (req, res) => {
   try {
-    const parser = new Parser();
+    const parser = new Parser({
+      requestOptions: {
+        headers: { 'User-Agent': 'MunicipalityPortal/1.0 (+http://localhost)' },
+        timeout: 5000,
+      },
+    });
     const feed = await parser.parseURL('https://www.onlinekhabar.com/feed');
     const items = (feed.items || []).slice(0, 10).map((item) => ({
       title: item.title || '',
@@ -22,8 +27,9 @@ router.get('/news', async (req, res) => {
     }));
     res.json(items);
   } catch (error) {
-    console.error('RSS fetch error:', error);
-    res.status(500).json({ message: 'Failed to fetch news feed' });
+    console.error('RSS fetch error:', error?.message || error);
+    // Return empty list instead of 500 to keep UI clean
+    res.json([]);
   }
 });
 
