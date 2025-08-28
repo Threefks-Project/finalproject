@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { getImageUrl } from '@/config/api';
 
 interface GalleryItem {
   id: number;
@@ -104,7 +105,7 @@ const GalleryManagement: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {items.map(item => (
             <div key={item.id} className="border rounded-md overflow-hidden">
-              <img src={item.imageUrl} alt={item.title} className="w-full h-40 object-cover" />
+              <img src={getImageUrl(item.imageUrl)} alt={item.title} className="w-full h-40 object-cover" />
               <div className="p-3">
                 <div className="font-medium">{item.title || 'Untitled'}</div>
                 <div className="text-xs text-gray-500">{item.category} • {item.date || '-'}</div>

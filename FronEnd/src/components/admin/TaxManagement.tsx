@@ -19,14 +19,18 @@ const TaxManagement: React.FC = () => {
   const [records, setRecords] = useState<TaxRecord[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const { getApiUrl } = await import('@/config/api');
         const res = await fetch(getApiUrl('/admin/tax-records'));
         const data = await res.json();
-        if (Array.isArray(data)) setRecords(data);
-      } catch {}
+        if (!cancelled && Array.isArray(data)) setRecords(data);
+      } catch {
+        if (!cancelled) setRecords([]);
+      }
     })();
+    return () => { cancelled = true };
   }, []);
 
   const getStatusColor = (status: string) => {

@@ -30,7 +30,12 @@ router.get('/admin/tax-records', (req, res) => {
     ORDER BY tr.due_date DESC
   `;
   db.query(sql, (err, rows) => {
-    if (err) return res.status(500).json({ error: 'Internal server error' });
+    if (err) {
+      if (err.code === 'ER_NO_SUCH_TABLE') {
+        return res.json([]);
+      }
+      return res.status(500).json({ error: 'Internal server error' });
+    }
     res.json(rows.map(r => ({
       id: String(r.id),
       citizenName: r.citizenName,

@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { getImageUrl } from '@/config/api';
 import { useTranslation } from 'react-i18next';
 import { 
   Image, 
@@ -121,7 +122,7 @@ const Gallery: React.FC = () => {
             >
               <div className="relative overflow-hidden">
                 <img
-                  src={image.imageUrl}
+                  src={getImageUrl(image.imageUrl)}
                   alt={image.title}
                   className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
                 />
@@ -202,7 +203,7 @@ const Gallery: React.FC = () => {
             {/* Image */}
             <div className="relative">
               <img
-                src={selectedImage.imageUrl}
+                src={getImageUrl(selectedImage.imageUrl)}
                 alt={selectedImage.title}
                 className="w-full h-auto max-h-[70vh] object-contain rounded-lg animate-scale-in"
               />
