@@ -141,7 +141,7 @@ const PayTaxes: React.FC = () => {
     land_area_sqft: "",
     kitta_no: "",
     building_area_sqft: "",
-    use: "residential",
+    uses: "residential",
     location_type: "prime",
     category: "small",
     pan_no: "",
@@ -172,7 +172,7 @@ const PayTaxes: React.FC = () => {
           form.land_area_sqft &&
           form.kitta_no &&
           form.building_area_sqft &&
-          form.use &&
+          form.uses &&
           form.location_type
         );
       }
@@ -184,7 +184,7 @@ const PayTaxes: React.FC = () => {
         form.land_area_sqft &&
         form.kitta_no &&
         form.building_area_sqft &&
-        form.use &&
+        form.uses &&
         form.location_type &&
         form.category &&
         form.pan_no
@@ -380,10 +380,10 @@ const PayTaxes: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-sm text-gray-700 mb-1">
-                          Use
+                          Uses
                         </label>
                         <select
-                          name="use"
+                          name="uses"
                           value={form.use}
                           onChange={handleChange}
                           onFocus={() => setFocusedField("use")}
@@ -511,10 +511,10 @@ const PayTaxes: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-sm text-gray-700 mb-1">
-                          Use
+                          Uses
                         </label>
                         <select
-                          name="use"
+                          name="uses"
                           value={form.use}
                           onChange={handleChange}
                           onFocus={() => setFocusedField("use")}
