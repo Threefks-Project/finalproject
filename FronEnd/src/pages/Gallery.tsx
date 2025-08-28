@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Image, 
@@ -14,7 +14,7 @@ import {
 
 interface GalleryImage {
   id: number;
-  src: string;
+  imageUrl: string;
   title: string;
   description: string;
   date: string;
@@ -26,63 +26,18 @@ const Gallery: React.FC = () => {
   const { t } = useTranslation();
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [images, setImages] = useState<GalleryImage[]>([]);
 
-  const galleryImages: GalleryImage[] = [
-    {
-      id: 1,
-      src: "https://images.unsplash.com/photo-1615729947596-a598e5de0ab3?w=800&h=600&fit=crop",
-      title: "भिरभिरे बगैंचा",
-      description: "शहरका सुन्दर हरियाली क्षेत्रहरू",
-      date: "2024-01-15",
-      location: "बिराटनगर-१",
-      category: "environment"
-    },
-    {
-      id: 2,
-      src: "https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=800&h=600&fit=crop",
-      title: "पुल निर्माण",
-      description: "नयाँ पुल निर्माण परियोजना",
-      date: "2024-02-20",
-      location: "बिराटनगर-५",
-      category: "infrastructure"
-    },
-    {
-      id: 3,
-      src: "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=800&h=600&fit=crop",
-      title: "फूल महोत्सव",
-      description: "वार्षिक फूल महोत्सव कार्यक्रम",
-      date: "2024-03-10",
-      location: "नगर हल",
-      category: "events"
-    },
-    {
-      id: 4,
-      src: "https://images.unsplash.com/photo-1482938289607-e9573fc25ebb?w=800&h=600&fit=crop",
-      title: "प्राकृतिक सुन्दरता",
-      description: "बिराटनगरको प्राकृतिक दृश्यहरू",
-      date: "2024-01-28",
-      location: "बिराटनगर-७",
-      category: "nature"
-    },
-    {
-      id: 5,
-      src: "https://images.unsplash.com/photo-1615729947596-a598e5de0ab3?w=800&h=600&fit=crop",
-      title: "सामुदायिक कार्यक्रम",
-      description: "स्थानीय समुदायिक कार्यक्रम",
-      date: "2024-02-14",
-      location: "बिराटनगर-३",
-      category: "community"
-    },
-    {
-      id: 6,
-      src: "https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=800&h=600&fit=crop",
-      title: "सडक सुधार",
-      description: "सडक सुधार र मर्मत कार्य",
-      date: "2024-03-05",
-      location: "बिराटनगर-२",
-      category: "infrastructure"
-    }
-  ];
+  useEffect(() => {
+    (async () => {
+      try {
+        const { getApiUrl } = await import('@/config/api');
+        const res = await fetch(getApiUrl('/gallery'));
+        const data: GalleryImage[] = await res.json();
+        if (Array.isArray(data)) setImages(data);
+      } catch {}
+    })();
+  }, []);
 
   const categories = [
     { key: 'all', label: t('all') },
@@ -94,8 +49,8 @@ const Gallery: React.FC = () => {
   ];
 
   const filteredImages = selectedCategory === 'all' 
-    ? galleryImages 
-    : galleryImages.filter(img => img.category === selectedCategory);
+    ? images 
+    : images.filter(img => img.category === selectedCategory);
 
   const openModal = (image: GalleryImage) => {
     setSelectedImage(image);
@@ -166,7 +121,7 @@ const Gallery: React.FC = () => {
             >
               <div className="relative overflow-hidden">
                 <img
-                  src={image.src}
+                  src={image.imageUrl}
                   alt={image.title}
                   className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
                 />
@@ -247,7 +202,7 @@ const Gallery: React.FC = () => {
             {/* Image */}
             <div className="relative">
               <img
-                src={selectedImage.src}
+                src={selectedImage.imageUrl}
                 alt={selectedImage.title}
                 className="w-full h-auto max-h-[70vh] object-contain rounded-lg animate-scale-in"
               />

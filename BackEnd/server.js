@@ -7,6 +7,8 @@ const signupRoutes = require('./routes/signupRoutes');
 const authRoutes = require('./routes/authRoutes');
 const taxpayerRoutes = require('./routes/taxpayerRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const galleryRoutes = require('./routes/galleryRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const app = express();
 
 app.use(cors({ origin: true, credentials: true }));
@@ -21,6 +23,8 @@ app.use('/api', signupRoutes);
 app.use('/api', authRoutes);
 app.use('/api', taxpayerRoutes);
 app.use('/api', paymentRoutes);
+app.use('/api', galleryRoutes);
+app.use('/api', adminRoutes);
 
 const PORT = 3000;
 app.listen(PORT, () => {

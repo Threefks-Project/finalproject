@@ -13,7 +13,7 @@ interface AdminLoginModalProps {
 
 const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClose }) => {
   const { t } = useTranslation();
-  const { login, isLoading } = useAuth();
+  const { adminLogin, isLoading } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin123');
@@ -21,7 +21,7 @@ const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClose }) =>
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login(username, password);
+      await adminLogin(username, password);
       toast({
         title: 'Success',
         description: 'Admin login successful!'
