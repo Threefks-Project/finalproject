@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Filter, CreditCard, Eye, CheckCircle, AlertTriangle } from 'lucide-react';
 
 interface TaxRecord {
@@ -8,48 +8,26 @@ interface TaxRecord {
   taxType: string;
   amount: number;
   dueDate: string;
-  paidDate: string | null;
+  fiscalYear?: string;
   status: 'paid' | 'pending' | 'overdue';
-  paymentMethod: string;
 }
 
 const TaxManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [taxTypeFilter, setTaxTypeFilter] = useState('all');
+  const [records, setRecords] = useState<TaxRecord[]>([]);
 
-  const mockTaxRecords: TaxRecord[] = [
-    {
-      id: 'TAX-2024-001',
-      citizenName: 'John Doe',
-      taxType: 'Property Tax',
-      amount: 15000,
-      dueDate: '2024-02-15',
-      paidDate: '2024-01-20',
-      status: 'paid',
-      paymentMethod: 'Online Banking'
-    },
-    {
-      id: 'TAX-2024-002',
-      citizenName: 'Jane Smith',
-      taxType: 'Business License Fee',
-      amount: 8000,
-      dueDate: '2024-01-30',
-      paidDate: null,
-      status: 'pending',
-      paymentMethod: ''
-    },
-    {
-      id: 'TAX-2024-003',
-      citizenName: 'Ram Prasad',
-      taxType: 'Property Tax',
-      amount: 12000,
-      dueDate: '2024-01-10',
-      paidDate: null,
-      status: 'overdue',
-      paymentMethod: ''
-    }
-  ];
+  useEffect(() => {
+    (async () => {
+      try {
+        const { getApiUrl } = await import('@/config/api');
+        const res = await fetch(getApiUrl('/admin/tax-records'));
+        const data = await res.json();
+        if (Array.isArray(data)) setRecords(data);
+      } catch {}
+    })();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -60,7 +38,7 @@ const TaxManagement: React.FC = () => {
     }
   };
 
-  const filteredRecords = mockTaxRecords.filter(record => {
+  const filteredRecords = records.filter(record => {
     const matchesSearch = record.citizenName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          record.id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
@@ -69,11 +47,11 @@ const TaxManagement: React.FC = () => {
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  const totalCollected = mockTaxRecords
+  const totalCollected = records
     .filter(record => record.status === 'paid')
     .reduce((sum, record) => sum + record.amount, 0);
 
-  const totalPending = mockTaxRecords
+  const totalPending = records
     .filter(record => record.status !== 'paid')
     .reduce((sum, record) => sum + record.amount, 0);
 
@@ -172,7 +150,7 @@ const TaxManagement: React.FC = () => {
                 <th className="text-left py-3 px-4 font-medium text-gray-700">Amount</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-700">Due Date</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Payment Method</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-700">Fiscal Year</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
               </tr>
             </thead>
@@ -189,9 +167,7 @@ const TaxManagement: React.FC = () => {
                       {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-sm text-gray-600">
-                    {record.paymentMethod || '-'}
-                  </td>
+                  <td className="py-3 px-4 text-sm text-gray-600">{record.fiscalYear || '-'}</td>
                   <td className="py-3 px-4">
                     <button className="p-1 hover:bg-gray-100 rounded-md transition-colors" title="View Details">
                       <Eye className="h-4 w-4 text-gray-600" />

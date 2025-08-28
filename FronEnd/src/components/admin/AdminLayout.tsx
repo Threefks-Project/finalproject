@@ -6,16 +6,14 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   LayoutDashboard, 
   AlertTriangle, 
-  FileText, 
-  Newspaper, 
-  ClipboardList, 
   CreditCard, 
   Users, 
   MessageSquare,
   LogOut,
   Menu,
   X,
-  Shield
+  Shield,
+  Image as ImageIcon
 } from 'lucide-react';
 
 const AdminLayout: React.FC = () => {
@@ -32,9 +30,7 @@ const AdminLayout: React.FC = () => {
   const navItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
     { path: '/admin/issues', icon: AlertTriangle, label: 'Civic Issues' },
-    { path: '/admin/documents', icon: FileText, label: 'Documents' },
-    { path: '/admin/news', icon: Newspaper, label: 'News & Notices' },
-    { path: '/admin/applications', icon: ClipboardList, label: 'Applications' },
+    { path: '/admin/gallery', icon: ImageIcon, label: 'Gallery' },
     { path: '/admin/taxes', icon: CreditCard, label: 'Tax Records' },
     { path: '/admin/users', icon: Users, label: 'Citizens' },
     { path: '/admin/complaints', icon: MessageSquare, label: 'Complaints' },
