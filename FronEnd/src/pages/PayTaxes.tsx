@@ -164,6 +164,7 @@ const PayTaxes: React.FC = () => {
         input.value = String(v);
         form.appendChild(input);
       });
+      form.target = '_blank';
       document.body.appendChild(form);
       form.submit();
     } catch (err: any) {

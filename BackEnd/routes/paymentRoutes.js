@@ -34,7 +34,8 @@ router.post('/pay/esewa/initiate', (req, res) => {
 
     return res.json({
       esewa: esewaConfig,
-      formAction: 'https://uat.esewa.com.np/epay/main',
+      // Use current sandbox endpoint
+      formAction: 'https://rc-epay.esewa.com.np/epay/main',
     });
   });
 });
