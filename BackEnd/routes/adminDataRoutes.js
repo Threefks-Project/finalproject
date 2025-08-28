@@ -48,6 +48,19 @@ router.get('/admin/tax-records', (req, res) => {
   });
 });
 
+// GET /api/admin/contacts - list contact messages
+router.get('/admin/contacts', (req, res) => {
+  const sql = 'SELECT id, name, email, phone, subject, message, created_at FROM contact_messages ORDER BY id DESC';
+  db.query(sql, (err, rows) => {
+    if (err) {
+      if (err.code === 'ER_NO_SUCH_TABLE') return res.json([]);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    res.json(rows);
+  });
+});
+
 module.exports = router;
+// Extend router with contacts endpoint here (kept separate for clarity in contactRoutes)
 
 

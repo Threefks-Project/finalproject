@@ -9,6 +9,7 @@ import TaxManagement from '@/components/admin/TaxManagement';
 import UserManagement from '@/components/admin/UserManagement';
 import ComplaintManagement from '@/components/admin/ComplaintManagement';
 import GalleryManagement from '@/components/admin/GalleryManagement';
+import ContactManagement from '@/components/admin/ContactManagement';
 
 const AdminRouter: React.FC = () => {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ const AdminRouter: React.FC = () => {
         <Route path="users" element={<UserManagement />} />
         <Route path="complaints" element={<ComplaintManagement />} />
         <Route path="gallery" element={<GalleryManagement />} />
+        <Route path="contacts" element={<ContactManagement />} />
       </Route>
     </Routes>
   );

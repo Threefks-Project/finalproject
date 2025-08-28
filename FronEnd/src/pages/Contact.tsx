@@ -16,14 +16,22 @@ const Contact: React.FC = () => {
     message: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate form submission
-    toast({
-      title: 'Message Sent',
-      description: 'Thank you for contacting us. We will get back to you soon.'
-    });
-    setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+    try {
+      const { getApiUrl } = await import('@/config/api');
+      const res = await fetch(getApiUrl('/contact'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || 'Failed');
+      toast({ title: 'Message Sent', description: 'Thank you for contacting us. We will get back to you soon.' });
+      setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'Submission failed' });
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

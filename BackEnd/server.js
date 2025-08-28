@@ -10,6 +10,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const galleryRoutes = require('./routes/galleryRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const adminDataRoutes = require('./routes/adminDataRoutes');
+const contactRoutes = require('./routes/contactRoutes');
 const app = express();
 
 app.use(cors({ origin: true, credentials: true }));
@@ -27,6 +28,7 @@ app.use('/api', paymentRoutes);
 app.use('/api', galleryRoutes);
 app.use('/api', adminRoutes);
 app.use('/api', adminDataRoutes);
+app.use('/api', contactRoutes);
 
 const PORT = 3000;
 app.listen(PORT, () => {

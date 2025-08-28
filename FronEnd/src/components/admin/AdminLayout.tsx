@@ -13,7 +13,8 @@ import {
   Menu,
   X,
   Shield,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Mail
 } from 'lucide-react';
 
 const AdminLayout: React.FC = () => {
@@ -34,6 +35,7 @@ const AdminLayout: React.FC = () => {
     { path: '/admin/taxes', icon: CreditCard, label: 'Tax Records' },
     { path: '/admin/users', icon: Users, label: 'Citizens' },
     { path: '/admin/complaints', icon: MessageSquare, label: 'Complaints' },
+    { path: '/admin/contacts', icon: Mail, label: 'Contacts' },
   ];
 
   return (
