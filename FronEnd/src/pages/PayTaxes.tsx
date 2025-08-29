@@ -993,8 +993,9 @@ const PayTaxes: React.FC = () => {
               <div className="md:col-span-2">
                 <label className="block text-sm text-gray-700 mb-1">Location Type</label>
                 <select value={propertyForm.location_type} onChange={(e)=>setPropertyForm({...propertyForm, location_type: e.target.value})} className="w-full border rounded-md px-3 py-2">
-                  <option>Urban</option>
-                  <option>Rural</option>
+                  <option>Prime Area</option>
+                  <option>Normal</option>
+                  <option>Remote</option>
                 </select>
               </div>
               <div className="md:col-span-2 flex justify-end gap-2 pt-2">

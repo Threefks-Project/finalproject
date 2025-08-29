@@ -94,8 +94,7 @@ const TaxManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Overdue Payments</p>
-                <p className="text-2xl font-bold text-red-600">{mockTaxRecords.filter(r => r.status === 'overdue').length}</p>
-              </div>
+<p className="text-2xl font-bold text-red-600">{records.filter(r => r.status === 'overdue').length}</p>              </div>
               <div className="p-3 bg-red-100 rounded-lg">
                 <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
