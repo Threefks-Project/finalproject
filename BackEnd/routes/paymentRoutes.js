@@ -150,3 +150,38 @@ router.get("/pay/esewa/failure", (req, res) => {
 });
 
 module.exports = router;
+// Receipt download for a tax record
+router.get('/tax/records/:id/receipt', (req, res) => {
+  const { id } = req.params;
+  const sql = `
+    SELECT tr.id, tr.fiscal_year, tr.assessment_amount, tr.due_date, tr.status,
+           tp.tax_type, u.name AS user_name, u.email AS user_email, u.ward, u.phone
+    FROM tax_records tr
+    JOIN tax_profiles tp ON tp.id = tr.tax_profile_id
+    JOIN users u ON u.id = tp.user_id
+    WHERE tr.id = ?
+    LIMIT 1`;
+  db.query(sql, [id], (err, rows) => {
+    if (err) return res.status(500).send('Internal server error');
+    if (!rows || rows.length === 0) return res.status(404).send('Not found');
+    const r = rows[0];
+    const lines = [
+      'Municipality Tax Payment Receipt',
+      '--------------------------------',
+      `Receipt ID: ${r.id}`,
+      `Payer: ${r.user_name} (${r.user_email})`,
+      `Ward / Phone: ${r.ward || '-'} / ${r.phone || '-'}`,
+      `Tax Type: ${r.tax_type === 'business' ? 'Business Tax' : 'Property Tax'}`,
+      `Fiscal Year: ${r.fiscal_year}`,
+      `Amount: NPR ${Number(r.assessment_amount).toFixed(2)}`,
+      `Due Date: ${r.due_date ? new Date(r.due_date).toISOString().slice(0,10) : '-'}`,
+      `Status: ${r.status}`,
+      `Issued At: ${new Date().toISOString()}`,
+      '',
+      'Thank you for your payment.'
+    ].join('\n');
+    res.setHeader('Content-Type', 'text/plain');
+    res.setHeader('Content-Disposition', `attachment; filename="receipt-${r.id}.txt"`);
+    res.send(lines);
+  });
+});

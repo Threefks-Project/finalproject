@@ -60,6 +60,24 @@ router.get('/admin/contacts', (req, res) => {
   });
 });
 
+// DELETE /api/admin/contacts/:id
+router.delete('/admin/contacts/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM contact_messages WHERE id = ?', [id], (err) => {
+    if (err) return res.status(500).json({ error: 'Internal server error' });
+    res.json({ success: true });
+  });
+});
+
+// DELETE /api/admin/citizens/:id
+router.delete('/admin/citizens/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('DELETE FROM users WHERE id = ?', [id], (err) => {
+    if (err) return res.status(500).json({ error: 'Internal server error' });
+    res.json({ success: true });
+  });
+});
+
 module.exports = router;
 // Extend router with contacts endpoint here (kept separate for clarity in contactRoutes)
 

@@ -57,6 +57,36 @@ router.get('/gallery', (req, res) => {
   });
 });
 
+// DELETE /api/gallery/:id - admin delete photo
+router.delete('/gallery/:id', (req, res) => {
+  const { id } = req.params;
+  db.query('SELECT image_path FROM gallery WHERE id = ? LIMIT 1', [id], (selErr, rows) => {
+    if (selErr) return res.status(500).json({ error: 'Internal server error' });
+    if (!rows || rows.length === 0) return res.status(404).json({ error: 'Not found' });
+    const imagePath = rows[0].image_path;
+    db.query('DELETE FROM gallery WHERE id = ?', [id], (delErr) => {
+      if (delErr) return res.status(500).json({ error: 'Internal server error' });
+      // delete file best-effort
+      if (imagePath) {
+        const full = path.join(__dirname, '..', imagePath);
+        fs.unlink(full, () => {});
+      }
+      res.json({ success: true });
+    });
+  });
+});
+
+// PUT /api/gallery/:id - admin update metadata
+router.put('/gallery/:id', (req, res) => {
+  const { id } = req.params;
+  const { title, description, date, location, category } = req.body || {};
+  const sql = 'UPDATE gallery SET title = ?, description = ?, date = ?, location = ?, category = ? WHERE id = ?';
+  db.query(sql, [title || '', description || '', date || null, location || '', category || 'general', id], (err) => {
+    if (err) return res.status(500).json({ error: 'Internal server error' });
+    res.json({ success: true });
+  });
+});
+
 module.exports = router;
 
 
