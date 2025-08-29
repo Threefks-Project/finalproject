@@ -112,7 +112,7 @@ router.get("/pay/esewa/success", (req, res) => {
         }
 
         db.query(
-          'UPDATE tax_records SET status = "paid", paid_at = NOW() WHERE id = ?',
+          'UPDATE tax_records SET status = "paid" WHERE id = ?',
           [taxRecordId],
           (updErr) => {
             if (updErr) {
