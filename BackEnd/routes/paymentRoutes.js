@@ -36,6 +36,10 @@ router.post("/pay/esewa/initiate", (req, res) => {
       // Generate transaction UUID
       const transactionUuid = `TRX-${tax_record_id}-${Date.now()}`;
 
+      // Build callback base to ensure it includes /api
+      const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+      const callbackBase = baseUrl.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
+
       // eSewa v2 config
       const esewaConfig = {
         amount: Number(amount).toFixed(2),                // ✅ required
@@ -45,8 +49,8 @@ router.post("/pay/esewa/initiate", (req, res) => {
         total_amount: Number(amount).toFixed(2),          // ✅ must equal sum
         transaction_uuid: transactionUuid,
         product_code: process.env.ESEWA_MERCHANT_CODE || "EPAYTEST",
-        success_url: `${process.env.BASE_URL}/pay/esewa/success`,
-        failure_url: `${process.env.BASE_URL}/pay/esewa/failure`,
+        success_url: `${callbackBase}/pay/esewa/success`,
+        failure_url: `${callbackBase}/pay/esewa/failure`,
         signed_field_names: "total_amount,transaction_uuid,product_code",
       };
 
