@@ -49,10 +49,9 @@ router.get('/taxpayer/:userId', (req, res) => {
         WHERE tp.user_id = ?
         ORDER BY tr.due_date DESC
       `;
-      // Compute and upsert due for property and/or business depending on profile
-      const taxType = profileRows && profileRows[0] ? profileRows[0].tax_type : null;
-      const hasProperty = taxType === 'property' || taxType === 'both';
-      const hasBusiness = taxType === 'business' || taxType === 'both';
+      // Compute and upsert dues separately for property and business profiles
+      const propertyProfile = (profileRows || []).find(r => r.tax_type === 'property' || r.tax_type === 'both');
+      const businessProfile = (profileRows || []).find(r => r.tax_type === 'business');
 
       const performCalcAndRespond = () => {
         db.query(duesSql, [userId], (duesErr, duesRows) => {
@@ -78,57 +77,52 @@ router.get('/taxpayer/:userId', (req, res) => {
         });
       };
 
-      if (hasProperty || hasBusiness) {
-        const row = profileRows[0] || {};
-        const propertyPromises = hasProperty
-          ? [
-              getActiveTaxRates(),
-              getUsageFactor(row.uses),
-              getLocationFactor(row.location_type),
-            ]
-          : [];
-        const businessPromise = hasBusiness ? getBusinessFixedFee(row.category) : Promise.resolve(0);
-
-        Promise.all([
-          Promise.all(propertyPromises).catch(() => []),
-          businessPromise.catch(() => 0),
-        ])
-          .then(([[rates, usageFactor, locationFactor] = [], businessFixedFee]) => {
-            let totalAssessment = 0;
-            if (hasProperty && rates) {
-              const pCalc = computePropertyTax({
-                landAreaSqft: row.land_area_sqft || 0,
-                buildingAreaSqft: row.building_area_sqft || 0,
-                usageFactor: usageFactor || 1,
-                locationFactor: locationFactor || 1,
-                rates,
-              });
-              totalAssessment += Number(pCalc.taxAmount || 0);
-            }
-            if (hasBusiness) {
-              const bCalc = computeBusinessTax({ category: row.category, fixedFee: businessFixedFee || 0 });
-              totalAssessment += Number(bCalc.taxAmount || 0);
-            }
-
-            const nextDue = new Date();
-            nextDue.setMonth(nextDue.getMonth() + 1);
-            const dueDateStr = nextDue.toISOString().slice(0, 10);
-            const now = new Date();
-            const fyStartMonth = 3; // April (0-indexed)
-            const fyYearStart = now.getMonth() >= fyStartMonth ? now.getFullYear() : now.getFullYear() - 1;
-            const fiscalYear = `${fyYearStart}-${fyYearStart + 1}`;
-            const taxProfileId = row.tax_profile_id;
-            if (!taxProfileId) return null;
-            return upsertCurrentDue({ taxProfileId, fiscalYear, assessmentAmount: totalAssessment, dueDate: dueDateStr });
-          })
-          .then(() => performCalcAndRespond())
-          .catch((err) => {
-            console.error('Tax calc error:', err);
-            performCalcAndRespond();
-          });
-      } else {
-        performCalcAndRespond();
+      if (!propertyProfile && !businessProfile) {
+        return performCalcAndRespond();
       }
+
+      const nextDue = new Date();
+      nextDue.setMonth(nextDue.getMonth() + 1);
+      const dueDateStr = nextDue.toISOString().slice(0, 10);
+      const now = new Date();
+      const fyStartMonth = 3; // April (0-indexed)
+      const fyYearStart = now.getMonth() >= fyStartMonth ? now.getFullYear() : now.getFullYear() - 1;
+      const fiscalYear = `${fyYearStart}-${fyYearStart + 1}`;
+
+      const tasks = [];
+      if (propertyProfile) {
+        tasks.push(
+          Promise.all([
+            getActiveTaxRates(),
+            getUsageFactor(propertyProfile.uses),
+            getLocationFactor(propertyProfile.location_type),
+          ]).then(([rates, usageFactor, locationFactor]) => {
+            const calc = computePropertyTax({
+              landAreaSqft: propertyProfile.land_area_sqft || 0,
+              buildingAreaSqft: propertyProfile.building_area_sqft || 0,
+              usageFactor: usageFactor || 1,
+              locationFactor: locationFactor || 1,
+              rates,
+            });
+            return upsertCurrentDue({ taxProfileId: propertyProfile.tax_profile_id, fiscalYear, assessmentAmount: calc.taxAmount, dueDate: dueDateStr });
+          })
+        );
+      }
+      if (businessProfile) {
+        tasks.push(
+          getBusinessFixedFee(businessProfile.category).then((fixed) => {
+            const calc = computeBusinessTax({ category: businessProfile.category, fixedFee: fixed || 0 });
+            return upsertCurrentDue({ taxProfileId: businessProfile.tax_profile_id, fiscalYear, assessmentAmount: calc.taxAmount, dueDate: dueDateStr });
+          })
+        );
+      }
+
+      Promise.all(tasks)
+        .then(() => performCalcAndRespond())
+        .catch((err) => {
+          console.error('Tax calc error:', err);
+          performCalcAndRespond();
+        });
     });
   });
 });
