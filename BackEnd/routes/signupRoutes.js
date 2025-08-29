@@ -53,58 +53,89 @@ router.post('/signup', (req, res) => {
                 return res.status(500).json({ error: 'Internal server error' });
               }
 
-              // Insert into tax_profiles
-              db.query(
-                'INSERT INTO tax_profiles (user_id, tax_type, created_at) VALUES (?, ?, NOW())',
-                [userId, taxType],
-                (err, taxResult) => {
-                  if (err) {
-                    console.error('Insert tax_profiles error:', err);
+              // Create tax profiles
+              if (taxType === 'both') {
+                // Create a property tax profile
+                db.query('INSERT INTO tax_profiles (user_id, tax_type, created_at) VALUES (?, ?, NOW())', [userId, 'property'], (tpErr1, tpRes1) => {
+                  if (tpErr1) {
+                    console.error('Insert property tax_profile error:', tpErr1);
                     return res.status(500).json({ error: 'Internal server error' });
                   }
-              
-                  const taxProfileId = taxResult.insertId;
-              
-                  // Insert property if needed
-                  const insertProperty = (callback) => {
-                    if (taxType === 'property' || taxType === 'both') {
-                      db.query(
-                        'INSERT INTO property_profiles (tax_profile_id, land_area_sqft, kitta_no, building_area_sqft, uses, location_type) VALUES (?, ?, ?, ?, ?, ?)',
-                        [taxProfileId, land_area_sqft, kitta_no, building_area_sqft, uses, location_type],
-                        callback
-                      );
-                    } else callback(null);
-                  };
-              
-                  // Insert business if needed
-                  const insertBusiness = (callback) => {
-                    if (taxType === 'business' || taxType === 'both') {
-                      db.query(
-                        'INSERT INTO business_profiles (tax_profile_id, category,pan_no) VALUES (?, ?, ?)',
-                        [taxProfileId, category,pan_no],
-                        callback
-                      );
-                    } else callback(null);
-                  };
-              
-                  // Insert property and business then return success
-                  insertProperty((err) => {
-                    if (err) {
-                      console.error('Insert property error:', err);
-                      return res.status(500).json({ error: 'Internal server error' });
-                    }
-              
-                    insertBusiness((err) => {
-                      if (err) {
-                        console.error('Insert business error:', err);
+                  const propertyTaxProfileId = tpRes1.insertId;
+                  // Attach property profile
+                  db.query(
+                    'INSERT INTO property_profiles (tax_profile_id, land_area_sqft, kitta_no, building_area_sqft, uses, location_type) VALUES (?, ?, ?, ?, ?, ?)',
+                    [propertyTaxProfileId, land_area_sqft || 0, kitta_no || '', building_area_sqft || 0, uses, location_type],
+                    (ppErr) => {
+                      if (ppErr) {
+                        console.error('Insert property profile error:', ppErr);
                         return res.status(500).json({ error: 'Internal server error' });
                       }
-              
-                      res.json({ success: true, userId });
-                    });
-                  });
-                }
-              );
+                      // Create a business tax profile
+                      db.query('INSERT INTO tax_profiles (user_id, tax_type, created_at) VALUES (?, ?, NOW())', [userId, 'business'], (tpErr2, tpRes2) => {
+                        if (tpErr2) {
+                          console.error('Insert business tax_profile error:', tpErr2);
+                          return res.status(500).json({ error: 'Internal server error' });
+                        }
+                        const businessTaxProfileId = tpRes2.insertId;
+                        // Attach business profile
+                        db.query(
+                          'INSERT INTO business_profiles (tax_profile_id, category, pan_no) VALUES (?, ?, ?)',
+                          [businessTaxProfileId, category, pan_no],
+                          (bpErr) => {
+                            if (bpErr) {
+                              console.error('Insert business profile error:', bpErr);
+                              return res.status(500).json({ error: 'Internal server error' });
+                            }
+                            return res.json({ success: true, userId });
+                          }
+                        );
+                      });
+                    }
+                  );
+                });
+              } else {
+                // Create a single tax profile based on taxType
+                db.query(
+                  'INSERT INTO tax_profiles (user_id, tax_type, created_at) VALUES (?, ?, NOW())',
+                  [userId, taxType],
+                  (err2, taxResult) => {
+                    if (err2) {
+                      console.error('Insert tax_profiles error:', err2);
+                      return res.status(500).json({ error: 'Internal server error' });
+                    }
+                    const taxProfileId = taxResult.insertId;
+                    const finalize = () => res.json({ success: true, userId });
+                    if (taxType === 'property') {
+                      db.query(
+                        'INSERT INTO property_profiles (tax_profile_id, land_area_sqft, kitta_no, building_area_sqft, uses, location_type) VALUES (?, ?, ?, ?, ?, ?)',
+                        [taxProfileId, land_area_sqft || 0, kitta_no || '', building_area_sqft || 0, uses, location_type],
+                        (ppErr) => {
+                          if (ppErr) {
+                            console.error('Insert property error:', ppErr);
+                            return res.status(500).json({ error: 'Internal server error' });
+                          }
+                          finalize();
+                        }
+                      );
+                    } else if (taxType === 'business') {
+                      db.query(
+                        'INSERT INTO business_profiles (tax_profile_id, category, pan_no) VALUES (?, ?, ?)',
+                        [taxProfileId, category, pan_no],
+                        (bpErr) => {
+                          if (bpErr) {
+                            console.error('Insert business error:', bpErr);
+                            return res.status(500).json({ error: 'Internal server error' });
+                          }
+                          finalize();
+                        }
+                      );
+                    } else {
+                      finalize();
+                    }
+                  }
+                );
+              }
               
             }
           );
