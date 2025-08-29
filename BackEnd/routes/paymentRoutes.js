@@ -74,26 +74,26 @@ router.post("/pay/esewa/initiate", (req, res) => {
 
 // Success callback
 router.get("/pay/esewa/success", (req, res) => {
-  const { transaction_uuid } = req.query;
-  if (!transaction_uuid) return res.status(400).send("Invalid");
+   res.json({ message: 'Payment successful' });
 
-  const parts = String(transaction_uuid).split("-");
-  const taxRecordId = Number(parts[1]);
-  if (!taxRecordId) return res.status(400).send("Invalid Transaction UUID");
-
-  db.query(
-    "UPDATE tax_records SET status = 'paid' WHERE id = ?",
-    [taxRecordId],
-    (err) => {
-      if (err) return res.status(500).send("Server error");
-      res.send("Payment successful. You can close this window.");
-    }
-  );
 });
 
 // Failure callback
 router.get("/pay/esewa/failure", (req, res) => {
-  res.status(400).send("Payment failed or cancelled.");
+  const { data } = req.query;
+  if (!data) return res.status(400).send("Invalid request");
+
+  try {
+    const decoded = JSON.parse(Buffer.from(data, "base64").toString("utf8"));
+    const { transaction_uuid, status } = decoded;
+
+    console.log("eSewa payment failed:", transaction_uuid, "status:", status);
+
+    res.redirect(`http://localhost:8080/payment-failed?txn=${transaction_uuid}`);
+  } catch (err) {
+    console.error("Error parsing eSewa failure data:", err);
+    res.status(400).send("Invalid failure data");
+  }
 });
 
 module.exports = router;
