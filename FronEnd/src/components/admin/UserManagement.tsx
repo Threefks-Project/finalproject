@@ -50,6 +50,17 @@ const UserManagement: React.FC = () => {
     return matchesSearch;
   });
 
+  const remove = async (id: string) => {
+    if (!confirm('Delete this user?')) return;
+    try {
+      const { getApiUrl } = await import('@/config/api');
+      const res = await fetch(getApiUrl(`/admin/citizens/${id}`), { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || 'Delete failed');
+      setUsers(prev => prev.filter(u => u.id !== id));
+    } catch {}
+  };
+
   const handleRoleChange = (userId: string, newRole: string) => {
     console.log(`Changing user ${userId} role to: ${newRole}`);
   };
@@ -111,6 +122,7 @@ const UserManagement: React.FC = () => {
                 <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-700">Ward</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-700">Phone</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -121,6 +133,10 @@ const UserManagement: React.FC = () => {
                   <td className="py-3 px-4 text-gray-600">{user.email}</td>
                   <td className="py-3 px-4">{user.ward || '-'}</td>
                   <td className="py-3 px-4">{user.phone || '-'}</td>
+                  <td className="py-3 px-4">
+                    <button onClick={() => alert(JSON.stringify(user, null, 2))} className="px-3 py-1 text-sm border rounded-md mr-2">View</button>
+                    <button onClick={() => remove(user.id)} className="px-3 py-1 text-sm bg-red-50 text-red-700 rounded-md">Delete</button>
+                  </td>
                 </tr>
               ))}
             </tbody>

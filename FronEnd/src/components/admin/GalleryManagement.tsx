@@ -32,6 +32,31 @@ const GalleryManagement: React.FC = () => {
 
   useEffect(() => { load(); }, []);
 
+  const remove = async (id: number) => {
+    if (!confirm('Delete this photo?')) return;
+    try {
+      const { getApiUrl } = await import('@/config/api');
+      const res = await fetch(getApiUrl(`/gallery/${id}`), { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || 'Delete failed');
+      await load();
+    } catch {}
+  };
+
+  const updateMeta = async (id: number, payload: Partial<GalleryItem>) => {
+    try {
+      const { getApiUrl } = await import('@/config/api');
+      const res = await fetch(getApiUrl(`/gallery/${id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || 'Update failed');
+      await load();
+    } catch {}
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) return;
@@ -109,6 +134,10 @@ const GalleryManagement: React.FC = () => {
               <div className="p-3">
                 <div className="font-medium">{item.title || 'Untitled'}</div>
                 <div className="text-xs text-gray-500">{item.category} • {item.date || '-'}</div>
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => updateMeta(item.id, { title })} className="px-3 py-1 text-sm border rounded-md">Edit</button>
+                  <button onClick={() => remove(item.id)} className="px-3 py-1 text-sm bg-red-50 text-red-700 rounded-md">Delete</button>
+                </div>
               </div>
             </div>
           ))}

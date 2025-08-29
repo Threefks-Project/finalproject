@@ -172,16 +172,28 @@ const PayTaxes: React.FC = () => {
     }
   };
 
-  const downloadReceipt = (tax: TaxRecord) => {
+  const downloadReceipt = async (tax: TaxRecord) => {
     if (!user) {
       setShowLoginPrompt(true);
       return;
     }
-
-    toast({
-      title: "Receipt downloaded",
-      description: `Receipt for ${tax.type} has been downloaded.`,
-    });
+    try {
+      const { getApiUrl } = await import('@/config/api');
+      const url = getApiUrl(`/tax/records/${tax.id}/receipt`);
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('Failed to generate receipt');
+      const blob = await resp.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = `receipt-${tax.id}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'Failed to download receipt' });
+    }
   };
 
   const LoginPrompt = () => (

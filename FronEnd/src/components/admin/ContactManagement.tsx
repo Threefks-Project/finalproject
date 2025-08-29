@@ -25,6 +25,17 @@ const ContactManagement: React.FC = () => {
     })();
   }, []);
 
+  const remove = async (id: number) => {
+    if (!confirm('Delete this contact message?')) return;
+    try {
+      const { getApiUrl } = await import('@/config/api');
+      const res = await fetch(getApiUrl(`/admin/contacts/${id}`), { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data?.success) throw new Error(data?.error || 'Delete failed');
+      setMessages(prev => prev.filter(m => m.id !== id));
+    } catch {}
+  };
+
   const filtered = messages.filter(m => (
     m.name.toLowerCase().includes(search.toLowerCase()) ||
     m.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -58,6 +69,7 @@ const ContactManagement: React.FC = () => {
                 <th className="text-left py-3 px-4 font-medium text-gray-700">Phone</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-700">Subject</th>
                 <th className="text-left py-3 px-4 font-medium text-gray-700">Message</th>
+                <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -69,6 +81,10 @@ const ContactManagement: React.FC = () => {
                   <td className="py-3 px-4">{msg.phone || '-'}</td>
                   <td className="py-3 px-4">{msg.subject}</td>
                   <td className="py-3 px-4 max-w-xl truncate" title={msg.message}>{msg.message}</td>
+                  <td className="py-3 px-4">
+                    <button onClick={() => alert(msg.message)} className="px-3 py-1 text-sm border rounded-md mr-2">View</button>
+                    <button onClick={() => remove(msg.id)} className="px-3 py-1 text-sm bg-red-50 text-red-700 rounded-md">Delete</button>
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
