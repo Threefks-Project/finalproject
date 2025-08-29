@@ -200,10 +200,10 @@ const PayTaxes: React.FC = () => {
       const resp = await fetch(url);
       if (!resp.ok) throw new Error('Failed to generate receipt');
       const blob = await resp.blob();
-      const href = URL.createObjectURL(blob);
+      const href = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
       const a = document.createElement('a');
       a.href = href;
-      a.download = `receipt-${tax.id}.txt`;
+      a.download = `receipt-${tax.id}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
