@@ -60,6 +60,22 @@ const PayTaxes: React.FC = () => {
       }
     };
     fetchDues();
+
+    // On return from eSewa, refresh dues if status param present
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
+    if (status) {
+      (async () => {
+        try {
+          const { getApiUrl } = await import('@/config/api');
+          const resp = await fetch(getApiUrl(`/taxpayer/${user?.id}`));
+          const data = await resp.json();
+          if (resp.ok) {
+            setRecords((data.dues || []).map((d: any) => ({ id: d.id, type: d.type, amount: d.amount, dueDate: d.dueDate, status: d.status })));
+          }
+        } catch {}
+      })();
+    }
   }, [user]);
 
   const submitProperty = async (e: React.FormEvent) => {
@@ -164,7 +180,8 @@ const PayTaxes: React.FC = () => {
         input.value = String(v);
         form.appendChild(input);
       });
-      form.target = '_blank';
+      // Submit in same tab so the user returns to app via success redirect
+      // and the component can refresh dues via query params.
       document.body.appendChild(form);
       form.submit();
     } catch (err: any) {

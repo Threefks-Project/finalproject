@@ -36,7 +36,7 @@ router.get('/admin/tax-records', (req, res) => {
       }
       return res.status(500).json({ error: 'Internal server error' });
     }
-    res.json(rows.map(r => ({
+    const data = rows.map(r => ({
       id: String(r.id),
       citizenName: r.citizenName,
       taxType: r.tax_type === 'business' ? 'Business Tax' : 'Property Tax',
@@ -44,7 +44,25 @@ router.get('/admin/tax-records', (req, res) => {
       dueDate: r.due_date,
       fiscalYear: r.fiscal_year,
       status: r.status,
-    })));
+    }));
+    // Remove duplicates for the same tax_profile + fiscal_year keeping the paid one if exists
+    // This safeguards UI in case any duplicates slipped in historically.
+    // Since we don't have tax_profile_id in the response, we dedupe by (citizenName, taxType, fiscalYear)
+    const seen = new Map();
+    for (const r of data) {
+      const key = `${r.citizenName}|${r.taxType}|${r.fiscalYear}`;
+      if (!seen.has(key)) {
+        seen.set(key, r);
+      } else {
+        const prev = seen.get(key);
+        // Prefer paid over pending/overdue
+        const score = (s) => (s === 'paid' ? 2 : s === 'overdue' ? 1 : 0);
+        if (score(r.status) > score(prev.status)) {
+          seen.set(key, r);
+        }
+      }
+    }
+    res.json(Array.from(seen.values()));
   });
 });
 

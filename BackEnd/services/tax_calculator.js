@@ -63,23 +63,31 @@ function computePropertyTax({ landAreaSqft = 0, buildingAreaSqft = 0, usageFacto
 }
 
 const upsertCurrentDue = ({ taxProfileId, fiscalYear, assessmentAmount, dueDate }) => new Promise((resolve, reject) => {
-  // Update or insert the current fiscal year's pending assessment for this tax profile
-  const findSql = 'SELECT id FROM tax_records WHERE tax_profile_id = ? AND fiscal_year = ? AND status = "pending" LIMIT 1';
-  db.query(findSql, [taxProfileId, fiscalYear], (findErr, rows) => {
-    if (findErr) return reject(findErr);
-    if (rows && rows.length > 0) {
-      const updateSql = 'UPDATE tax_records SET assessment_amount = ?, due_date = ? WHERE id = ?';
-      db.query(updateSql, [assessmentAmount, dueDate, rows[0].id], (updErr) => {
-        if (updErr) return reject(updErr);
-        resolve(rows[0].id);
-      });
-    } else {
-      const insertSql = 'INSERT INTO tax_records (tax_profile_id, fiscal_year, assessment_amount, due_date, status, created_at) VALUES (?, ?, ?, ?, "pending", NOW())';
-      db.query(insertSql, [taxProfileId, fiscalYear, assessmentAmount, dueDate], (insErr, result) => {
-        if (insErr) return reject(insErr);
-        resolve(result.insertId);
-      });
+  // If a paid record already exists for the fiscal year, do nothing
+  const paidSql = 'SELECT id FROM tax_records WHERE tax_profile_id = ? AND fiscal_year = ? AND status = "paid" LIMIT 1';
+  db.query(paidSql, [taxProfileId, fiscalYear], (paidErr, paidRows) => {
+    if (paidErr) return reject(paidErr);
+    if (paidRows && paidRows.length > 0) {
+      return resolve(paidRows[0].id);
     }
+    // Otherwise, upsert pending
+    const findSql = 'SELECT id FROM tax_records WHERE tax_profile_id = ? AND fiscal_year = ? AND status = "pending" LIMIT 1';
+    db.query(findSql, [taxProfileId, fiscalYear], (findErr, rows) => {
+      if (findErr) return reject(findErr);
+      if (rows && rows.length > 0) {
+        const updateSql = 'UPDATE tax_records SET assessment_amount = ?, due_date = ? WHERE id = ?';
+        db.query(updateSql, [assessmentAmount, dueDate, rows[0].id], (updErr) => {
+          if (updErr) return reject(updErr);
+          resolve(rows[0].id);
+        });
+      } else {
+        const insertSql = 'INSERT INTO tax_records (tax_profile_id, fiscal_year, assessment_amount, due_date, status, created_at) VALUES (?, ?, ?, ?, "pending", NOW())';
+        db.query(insertSql, [taxProfileId, fiscalYear, assessmentAmount, dueDate], (insErr, result) => {
+          if (insErr) return reject(insErr);
+          resolve(result.insertId);
+        });
+      }
+    });
   });
 });
 

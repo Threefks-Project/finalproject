@@ -95,7 +95,7 @@ router.get("/pay/esewa/success", (req, res) => {
     }
 
     db.query(
-      'SELECT id, assessment_amount, status FROM tax_records WHERE id = ? LIMIT 1',
+      'SELECT id, assessment_amount, status, tax_profile_id, fiscal_year FROM tax_records WHERE id = ? LIMIT 1',
       [taxRecordId],
       (selErr, rows) => {
         if (selErr) {
@@ -119,9 +119,23 @@ router.get("/pay/esewa/success", (req, res) => {
               console.error("DB error updating payment status:", updErr);
               return res.status(500).send("Internal server error");
             }
-            const redirectBase = process.env.FRONTEND_URL || 'http://localhost:8080';
-            const amountParam = total_amount ? `&amount=${encodeURIComponent(total_amount)}` : '';
-            return res.redirect(`${redirectBase}/pay-taxes?status=success&txn=${encodeURIComponent(transaction_uuid)}${amountParam}`);
+            // Clean up any duplicate pending records for the same profile/year
+            const { tax_profile_id, fiscal_year } = rows[0];
+            if (tax_profile_id && fiscal_year) {
+              db.query(
+                'DELETE FROM tax_records WHERE tax_profile_id = ? AND fiscal_year = ? AND status = "pending" AND id <> ?',
+                [tax_profile_id, fiscal_year, taxRecordId],
+                () => {
+                  const redirectBase = process.env.FRONTEND_URL || 'http://localhost:8080';
+                  const amountParam = total_amount ? `&amount=${encodeURIComponent(total_amount)}` : '';
+                  return res.redirect(`${redirectBase}/pay-taxes?status=success&txn=${encodeURIComponent(transaction_uuid)}${amountParam}`);
+                }
+              );
+            } else {
+              const redirectBase = process.env.FRONTEND_URL || 'http://localhost:8080';
+              const amountParam = total_amount ? `&amount=${encodeURIComponent(total_amount)}` : '';
+              return res.redirect(`${redirectBase}/pay-taxes?status=success&txn=${encodeURIComponent(transaction_uuid)}${amountParam}`);
+            }
           }
         );
       }
@@ -149,8 +163,8 @@ router.get("/pay/esewa/failure", (req, res) => {
   }
 });
 
-module.exports = router;
-// Receipt download for a tax record
+// PDF Receipt download for a tax record
+const PDFDocument = require('pdfkit');
 router.get('/tax/records/:id/receipt', (req, res) => {
   const { id } = req.params;
   const sql = `
@@ -165,23 +179,50 @@ router.get('/tax/records/:id/receipt', (req, res) => {
     if (err) return res.status(500).send('Internal server error');
     if (!rows || rows.length === 0) return res.status(404).send('Not found');
     const r = rows[0];
-    const lines = [
-      'Municipality Tax Payment Receipt',
-      '--------------------------------',
-      `Receipt ID: ${r.id}`,
-      `Payer: ${r.user_name} (${r.user_email})`,
-      `Ward / Phone: ${r.ward || '-'} / ${r.phone || '-'}`,
-      `Tax Type: ${r.tax_type === 'business' ? 'Business Tax' : 'Property Tax'}`,
-      `Fiscal Year: ${r.fiscal_year}`,
-      `Amount: NPR ${Number(r.assessment_amount).toFixed(2)}`,
-      `Due Date: ${r.due_date ? new Date(r.due_date).toISOString().slice(0,10) : '-'}`,
-      `Status: ${r.status}`,
-      `Issued At: ${new Date().toISOString()}`,
-      '',
-      'Thank you for your payment.'
-    ].join('\n');
-    res.setHeader('Content-Type', 'text/plain');
-    res.setHeader('Content-Disposition', `attachment; filename="receipt-${r.id}.txt"`);
-    res.send(lines);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="receipt-${r.id}.pdf"`);
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    doc.pipe(res);
+
+    // Header
+    doc
+      .fontSize(20)
+      .fillColor('#0f172a')
+      .text('Municipality Tax Payment Receipt', { align: 'center' })
+      .moveDown(0.5);
+    doc
+      .fontSize(10)
+      .fillColor('#64748b')
+      .text(`Receipt ID: ${r.id}`, { align: 'center' })
+      .moveDown(1);
+
+    // Payer & record info
+    doc.fontSize(12).fillColor('#0f172a').text('Payer Details', { underline: true });
+    doc.moveDown(0.3);
+    doc.fontSize(11).fillColor('#111827');
+    doc.text(`Name: ${r.user_name}`);
+    doc.text(`Email: ${r.user_email}`);
+    doc.text(`Ward: ${r.ward || '-'}`);
+    doc.text(`Phone: ${r.phone || '-'}`);
+
+    doc.moveDown(0.8);
+    doc.fontSize(12).fillColor('#0f172a').text('Payment Details', { underline: true });
+    doc.moveDown(0.3);
+    doc.fontSize(11).fillColor('#111827');
+    doc.text(`Tax Type: ${r.tax_type === 'business' ? 'Business Tax' : 'Property Tax'}`);
+    doc.text(`Fiscal Year: ${r.fiscal_year}`);
+    doc.text(`Amount: NPR ${Number(r.assessment_amount).toFixed(2)}`);
+    doc.text(`Due Date: ${r.due_date ? new Date(r.due_date).toISOString().slice(0,10) : '-'}`);
+    doc.text(`Status: ${r.status}`);
+
+    doc.moveDown(1);
+    doc.fontSize(10).fillColor('#6b7280').text('Issued by Municipality e-Governance System', { align: 'center' });
+    doc.text(`Issued At: ${new Date().toLocaleString()}`, { align: 'center' });
+
+    doc.end();
   });
 });
+
+module.exports = router;

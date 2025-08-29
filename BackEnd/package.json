@@ -11,7 +11,8 @@
     "mysql": "^2.18.1",
     "mysql2": "^3.9.2",
     "onnxruntime-node": "^1.22.0-rev",
-    "rss-parser": "^3.13.0"
+    "rss-parser": "^3.13.0",
+    "pdfkit": "^0.14.0"
   },
   "scripts": {
     "start": "node server.js",
