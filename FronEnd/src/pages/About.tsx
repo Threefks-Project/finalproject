@@ -10,19 +10,19 @@ type Leader = {
 };
  const leaders: Leader[] = [
   {
-    name: 'आशुतोष उpu भट्टराई',
+    name: 'आशुतोष भट्टराई',
     post: 'नगर प्रमुख',
     contact: '9801234567',
     image: mayorImage,
   },
   {
-    name: 'अर्जुन उpu दाहाल',
+    name: 'अर्जुन दाहाल',
     post: 'उप–प्रमुख',
     contact: '9807654321',
     image: deputyMayorImage,
   },
   {
-    name: 'प्रवेश जैC ओझा',
+    name: 'प्रवेश ओझा',
     post: 'प्रमुख प्रशासकीय अधिकृत',
     contact: '9812345678',
     image: chiefExecutiveImage,

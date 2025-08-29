@@ -122,16 +122,16 @@ const Header: React.FC = () => {
             {/* Left side: Emergency numbers in Nepali - responsive layout */}
             <div className="flex flex-wrap gap-1 sm:gap-4 md:gap-6 justify-center sm:justify-start">
               <span className="whitespace-nowrap text-xs">
-                एम्बुलेन्स: 9865266142
+                एम्बुलेन्स: 9762959224
               </span>
               <span className="whitespace-nowrap text-xs">
-                दमकल: 9865321455
+                दमकल: 021-420000
               </span>
               <span className="whitespace-nowrap text-xs hidden sm:inline">
-                ट्राफिक प्रहरी: 9865324578
+                ट्राफिक प्रहरी: 9852091102
               </span>
               <span className="whitespace-nowrap text-xs hidden lg:inline">
-                नेपाल प्रहरी: 9865324512
+                नेपाल प्रहरी: 9852694444
               </span>
             </div>
 
