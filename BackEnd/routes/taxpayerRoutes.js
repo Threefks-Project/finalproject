@@ -49,9 +49,9 @@ router.get('/taxpayer/:userId', (req, res) => {
         WHERE tp.user_id = ?
         ORDER BY tr.due_date DESC
       `;
-      // Compute and upsert dues separately for property and business profiles
-      const propertyProfile = (profileRows || []).find(r => r.tax_type === 'property' || r.tax_type === 'both');
-      const businessProfile = (profileRows || []).find(r => r.tax_type === 'business');
+      // Compute and upsert dues separately for property and business profiles (distinct tax_profiles)
+      const propertyProfile = (profileRows || []).find(r => r.tax_type === 'property' && (r.land_area_sqft != null || r.building_area_sqft != null));
+      const businessProfile = (profileRows || []).find(r => r.tax_type === 'business' && r.category);
 
       const performCalcAndRespond = () => {
         db.query(duesSql, [userId], (duesErr, duesRows) => {
