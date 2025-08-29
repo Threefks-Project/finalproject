@@ -30,6 +30,24 @@ const getLocationFactor = (name) => new Promise((resolve, reject) => {
   });
 });
 
+// Business tax: fixed fee by category
+const getBusinessFixedFee = (category) => new Promise((resolve, reject) => {
+  if (!category) return resolve(0);
+  const sql = 'SELECT fixed_fee FROM business_tax_categories WHERE LOWER(category) = LOWER(?) LIMIT 1';
+  db.query(sql, [category], (err, rows) => {
+    if (err) return reject(err);
+    resolve(rows && rows[0] ? Number(rows[0].fixed_fee) : 0);
+  });
+});
+
+function computeBusinessTax({ category, fixedFee }) {
+  // If fixedFee provided, prefer it; else zero. Caller can fetch via getBusinessFixedFee.
+  const amount = Number(fixedFee || 0);
+  return {
+    taxAmount: Number(amount.toFixed(2)),
+  };
+}
+
 function computePropertyTax({ landAreaSqft = 0, buildingAreaSqft = 0, usageFactor = 1, locationFactor = 1, rates }) {
   const landComponent = Number(landAreaSqft) * Number(rates.land_rate_per_sqft);
   const buildingComponent = Number(buildingAreaSqft) * Number(rates.building_rate_per_sqft);
@@ -69,7 +87,9 @@ module.exports = {
   getActiveTaxRates,
   getUsageFactor,
   getLocationFactor,
+  getBusinessFixedFee,
   computePropertyTax,
+  computeBusinessTax,
   upsertCurrentDue,
 };
 

@@ -74,8 +74,58 @@ router.post("/pay/esewa/initiate", (req, res) => {
 
 // Success callback
 router.get("/pay/esewa/success", (req, res) => {
-   res.json({ message: 'Payment successful' });
+  const { data } = req.query;
+  if (!data) return res.status(400).send("Invalid request");
 
+  try {
+    const decoded = JSON.parse(Buffer.from(data, "base64").toString("utf8"));
+    const { transaction_uuid, status, total_amount } = decoded || {};
+
+    if (!transaction_uuid) return res.status(400).send("Missing transaction_uuid");
+
+    // transaction_uuid format: TRX-<tax_record_id>-<timestamp>
+    const parts = String(transaction_uuid).split("-");
+    const taxRecordId = parts.length >= 3 ? Number(parts[1]) : NaN;
+    if (!taxRecordId || Number.isNaN(taxRecordId)) {
+      return res.status(400).send("Invalid transaction reference");
+    }
+
+    db.query(
+      'SELECT id, assessment_amount, status FROM tax_records WHERE id = ? LIMIT 1',
+      [taxRecordId],
+      (selErr, rows) => {
+        if (selErr) {
+          console.error("DB error fetching record:", selErr);
+          return res.status(500).send("Internal server error");
+        }
+        if (!rows || rows.length === 0) {
+          return res.status(404).send("Record not found");
+        }
+
+        const isSuccess = String(status || '').toUpperCase() === 'COMPLETE' || String(status || '').toUpperCase() === 'SUCCESS';
+        if (!isSuccess) {
+          return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:8080'}/pay-taxes?status=failure&txn=${encodeURIComponent(transaction_uuid)}`);
+        }
+
+        db.query(
+          'UPDATE tax_records SET status = "paid", paid_at = NOW() WHERE id = ?',
+          [taxRecordId],
+          (updErr) => {
+            if (updErr) {
+              console.error("DB error updating payment status:", updErr);
+              return res.status(500).send("Internal server error");
+            }
+            const redirectBase = process.env.FRONTEND_URL || 'http://localhost:8080';
+            const amountParam = total_amount ? `&amount=${encodeURIComponent(total_amount)}` : '';
+            return res.redirect(`${redirectBase}/pay-taxes?status=success&txn=${encodeURIComponent(transaction_uuid)}${amountParam}`);
+          }
+        );
+      }
+    );
+  } catch (err) {
+    console.error("Error parsing eSewa success data:", err);
+    res.status(400).send("Invalid success data");
+  }
 });
 
 // Failure callback
@@ -85,11 +135,10 @@ router.get("/pay/esewa/failure", (req, res) => {
 
   try {
     const decoded = JSON.parse(Buffer.from(data, "base64").toString("utf8"));
-    const { transaction_uuid, status } = decoded;
+    const { transaction_uuid, status } = decoded || {};
 
-    console.log("eSewa payment failed:", transaction_uuid, "status:", status);
-
-    res.redirect(`http://localhost:8080/payment-failed?txn=${transaction_uuid}`);
+    const redirectBase = process.env.FRONTEND_URL || 'http://localhost:8080';
+    res.redirect(`${redirectBase}/pay-taxes?status=failure&txn=${encodeURIComponent(transaction_uuid || '')}`);
   } catch (err) {
     console.error("Error parsing eSewa failure data:", err);
     res.status(400).send("Invalid failure data");

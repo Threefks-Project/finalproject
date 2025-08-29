@@ -4,7 +4,9 @@ const {
   getActiveTaxRates,
   getUsageFactor,
   getLocationFactor,
+  getBusinessFixedFee,
   computePropertyTax,
+  computeBusinessTax,
   upsertCurrentDue,
 } = require('../services/tax_calculator');
 
@@ -47,8 +49,10 @@ router.get('/taxpayer/:userId', (req, res) => {
         WHERE tp.user_id = ?
         ORDER BY tr.due_date DESC
       `;
-      // Compute and upsert property due if property profile exists
-      const hasProperty = profileRows && profileRows[0] && (profileRows[0].tax_type === 'property' || profileRows[0].tax_type === 'both');
+      // Compute and upsert due for property and/or business depending on profile
+      const taxType = profileRows && profileRows[0] ? profileRows[0].tax_type : null;
+      const hasProperty = taxType === 'property' || taxType === 'both';
+      const hasBusiness = taxType === 'business' || taxType === 'both';
 
       const performCalcAndRespond = () => {
         db.query(duesSql, [userId], (duesErr, duesRows) => {
@@ -74,21 +78,38 @@ router.get('/taxpayer/:userId', (req, res) => {
         });
       };
 
-      if (hasProperty) {
-        const pp = profileRows[0];
+      if (hasProperty || hasBusiness) {
+        const row = profileRows[0] || {};
+        const propertyPromises = hasProperty
+          ? [
+              getActiveTaxRates(),
+              getUsageFactor(row.uses),
+              getLocationFactor(row.location_type),
+            ]
+          : [];
+        const businessPromise = hasBusiness ? getBusinessFixedFee(row.category) : Promise.resolve(0);
+
         Promise.all([
-          getActiveTaxRates(),
-          getUsageFactor(pp.uses),
-          getLocationFactor(pp.location_type),
+          Promise.all(propertyPromises).catch(() => []),
+          businessPromise.catch(() => 0),
         ])
-          .then(([rates, usageFactor, locationFactor]) => {
-            const calc = computePropertyTax({
-              landAreaSqft: pp.land_area_sqft || 0,
-              buildingAreaSqft: pp.building_area_sqft || 0,
-              usageFactor,
-              locationFactor,
-              rates,
-            });
+          .then(([[rates, usageFactor, locationFactor] = [], businessFixedFee]) => {
+            let totalAssessment = 0;
+            if (hasProperty && rates) {
+              const pCalc = computePropertyTax({
+                landAreaSqft: row.land_area_sqft || 0,
+                buildingAreaSqft: row.building_area_sqft || 0,
+                usageFactor: usageFactor || 1,
+                locationFactor: locationFactor || 1,
+                rates,
+              });
+              totalAssessment += Number(pCalc.taxAmount || 0);
+            }
+            if (hasBusiness) {
+              const bCalc = computeBusinessTax({ category: row.category, fixedFee: businessFixedFee || 0 });
+              totalAssessment += Number(bCalc.taxAmount || 0);
+            }
+
             const nextDue = new Date();
             nextDue.setMonth(nextDue.getMonth() + 1);
             const dueDateStr = nextDue.toISOString().slice(0, 10);
@@ -96,12 +117,13 @@ router.get('/taxpayer/:userId', (req, res) => {
             const fyStartMonth = 3; // April (0-indexed)
             const fyYearStart = now.getMonth() >= fyStartMonth ? now.getFullYear() : now.getFullYear() - 1;
             const fiscalYear = `${fyYearStart}-${fyYearStart + 1}`;
-            return upsertCurrentDue({ taxProfileId: pp.tax_profile_id, fiscalYear, assessmentAmount: calc.taxAmount, dueDate: dueDateStr });
+            const taxProfileId = row.tax_profile_id;
+            if (!taxProfileId) return null;
+            return upsertCurrentDue({ taxProfileId, fiscalYear, assessmentAmount: totalAssessment, dueDate: dueDateStr });
           })
           .then(() => performCalcAndRespond())
           .catch((err) => {
             console.error('Tax calc error:', err);
-            // Even if calc fails, respond with current dues
             performCalcAndRespond();
           });
       } else {
